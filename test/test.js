@@ -1,6 +1,7 @@
 const rollup = require('rollup');
 const jspmRollup = require('../jspm-rollup');
 const path = require('path');
+const assert = require('assert');
 
 suite('Basic Rollup', () => {
   const projectPath = path.resolve('test/fixtures/basic');
@@ -16,6 +17,6 @@ suite('Basic Rollup', () => {
     const { code, map } = await bundle.generate({
       format: 'es'
     });
-    console.log(code);
+    assert.equal(eval(code.replace('export default', '')), path.resolve('dep'));
   });
 });

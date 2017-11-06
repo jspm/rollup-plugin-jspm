@@ -1,1 +1,2 @@
-module.exports = 'dep';
+require('path');
+module.exports = path.resolve('dep');
