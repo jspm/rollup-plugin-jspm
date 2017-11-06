@@ -1,0 +1,40 @@
+{
+  "name": "rollup-plugin-jspm",
+  "version": "0.1.0",
+  "description": "Rollup plugin for jspm 2",
+  "main": "jspm-rollup.js",
+  "license": "MIT",
+  "scripts": {
+    "test": "mocha -u tdd test"
+  },
+  "dependencies": {
+    "babel-core": "^6.26.0",
+    "babel-plugin-transform-cjs-dew": "github:guybedford/babel-plugin-transform-cjs-dew",
+    "browserify-zlib": "^0.2.0",
+    "buffer": "^5.0.8",
+    "console-browserify": "^1.1.0",
+    "constants-browserify": "^1.0.0",
+    "crypto-browserify": "^3.12.0",
+    "domain-browser": "^1.1.7",
+    "events": "^1.1.1",
+    "https-browserify": "^1.0.0",
+    "jspm-resolve": "github:guybedford/jspm-resolve",
+    "os-browserify": "^0.3.0",
+    "path-browserify": "0.0.0",
+    "process": "^0.11.10",
+    "punycode": "^2.1.0",
+    "querystring-es3": "^0.2.1",
+    "readable-stream": "^2.3.3",
+    "stream-http": "^2.7.2",
+    "string_decoder": "^1.0.3",
+    "timers-browserify": "^2.0.4",
+    "tty-browserify": "0.0.0",
+    "url": "^0.11.0",
+    "util": "^0.10.3",
+    "vm-browserify": "0.0.4"
+  },
+  "devDependencies": {
+    "mocha": "^4.0.1",
+    "rollup": "^0.50.0"
+  }
+}
