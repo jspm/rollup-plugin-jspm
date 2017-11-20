@@ -9,8 +9,8 @@
   },
   "dependencies": {
     "babel-core": "^6.26.0",
-    "babel-plugin-transform-cjs-dew": "github:guybedford/babel-plugin-transform-cjs-dew",
-    "jspm-resolve": "github:guybedford/jspm-resolve",
+    "babel-plugin-transform-cjs-dew": "git+ssh://git@github.com/jspm/babel-plugin-transform-cjs-dew",
+    "jspm-resolve": "git+ssh://git@github.com/jspm/jspm-resolve",
     "node-browser-builtins": "^1.0.0"
   },
   "devDependencies": {
