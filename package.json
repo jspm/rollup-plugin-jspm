@@ -5,15 +5,16 @@
   "main": "jspm-rollup.js",
   "license": "MIT",
   "scripts": {
-    "test": "mocha -u tdd test"
+    "test": "mocha -u tdd test --timeout 20000 -b"
   },
   "dependencies": {
-    "babel-core": "^6.26.0",
     "babel-plugin-transform-cjs-dew": "git+ssh://git@github.com/jspm/babel-plugin-transform-cjs-dew",
-    "jspm-resolve": "git+ssh://git@github.com/jspm/jspm-resolve",
-    "node-browser-builtins": "^1.0.0"
+    "jspm-resolve": "git+ssh://git@github.com/jspm/jspm-resolve"
   },
   "devDependencies": {
+    "babel-core": "^6.26.0",
+    "chalk": "^2.3.0",
+    "lodash": "^4.17.4",
     "mocha": "^4.0.1",
     "rollup": "^0.50.0"
   }
