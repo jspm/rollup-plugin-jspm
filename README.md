@@ -20,7 +20,7 @@ const basePath = path.resolve('components');
 export default {
   input: './main.js', // Will resolve to 'components/main.js'
   plugins: [
-    jspmRollup({ 
+    jspm({ 
       basePath, // defaults to process.cwd()
       env: { browser: true, node: false } // defaults to { node: true }
     }),
