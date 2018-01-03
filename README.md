@@ -11,11 +11,11 @@ npm install --save-dev rollup-plugin-jspm
 ## Usage
 ```js
 // rollup.config.js
-import {resolve} from 'path';
+import path from 'path';
 import babel from 'rollup-plugin-babel';
 import jspm from 'rollup-plugin-jspm';
 
-const basePath = resolve('components');
+const basePath = path.resolve('components');
 
 export default {
   input: './main.js', // Will resolve to 'components/main.js'
