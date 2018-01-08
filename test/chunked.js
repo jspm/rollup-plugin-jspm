@@ -98,7 +98,7 @@ suite('Node single file builds', () => {
   });
 });
 
-suite.skip('Chunked builds', () => {
+suite('Chunked builds', () => {
   test('babel / lodash chunk', async () => {
     const bundle = await rollup.rollup({
       input: [
@@ -109,10 +109,10 @@ suite.skip('Chunked builds', () => {
       experimentalCodeSplitting: true
     });
 
-    await bundle.write({ format: 'es', dir: `${outFixtures}` });
+    await bundle.write({ format: 'cjs', dir: `${outFixtures}` });
 
-    // assert.equal(bundle.chunks['babel.js'].modules.length, 323);
-    // assert.equal(bundle.chunks['lodash.js'].modules.length, 1);
+    assert.equal(bundle.chunks['./babel.js'].modules.length, 361);
+    assert.equal(bundle.chunks['./lodash.js'].modules.length, 2);
 
     // test we can execute (assertions in code)
     require(`${outFixtures}/babel.js`);
