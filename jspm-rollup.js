@@ -92,7 +92,7 @@ module.exports = ({
                 allowReturnOutsideFunction: true
               },
               plugins: [
-                ['transform-cjs-dew', {
+                [require('babel-plugin-transform-cjs-dew'), {
                   filename: id,
                   define: {
                     'process.env.NODE_ENV': nodeEnv
