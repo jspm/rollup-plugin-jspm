@@ -1,4 +1,4 @@
-import babel from 'babel-core';
+import babel from '@babel/core';
 import assert from 'assert';
 
 const { code } = babel.transform(`export var p = 5;`);
