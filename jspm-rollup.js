@@ -22,7 +22,10 @@ module.exports = ({
       opts.output.interop = false;
       return opts;
     },
-    async resolveId (name, parent = basePath) {
+    async resolveId (name, parent) {
+      const topLevel = !parent;
+      if (topLevel)
+        parent = basePath;
       if (parent.endsWith('?dewexternal'))
         return false;
 
@@ -32,7 +35,16 @@ module.exports = ({
       if (name.endsWith('?dew'))
         return name;
 
-      let { resolved, format } = await jspmResolve(name, parent, { cache, env });
+      let resolved, format;
+      try {
+        ({ resolved, format } = await jspmResolve(name, parent, { cache, env }));
+      }
+      catch (err) {
+        if (!topLevel || !err || err.code !== 'MODULE_NOT_FOUND' ||
+            name.startsWith('./') || name.startsWith('../'))
+          throw err;
+        ({ resolved, format } = await jspmResolve('./' + name, parent, { cache, env }));
+      }
       
       if (!resolved) {
         return '@empty' + (parent.endsWith('?dew') ? '?dew' : '');
