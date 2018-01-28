@@ -3,12 +3,37 @@ const babel = require('@babel/core');
 const fs = require('fs');
 const path = require('path');
 
+const stage3 = ['asyncGenerators', 'classProperties', 'optionalCatchBinding', 'objectRestSpread', 'numericSeparator'];
+const stage3DynamicImport = stage3.concat(['dynamicImport', 'importMeta']);
+
 let cache = {};
 let formatCache = {};
 
+const defaultEnvTargets = {
+  browser: {
+    esm: {
+      esmodules: true
+    },
+    other: {
+      browsers: ['> 1%', 'last 2 versions', 'Firefox ESR']
+    }
+  },
+  node: {
+    esm: {
+      node: '8.9.0'
+    },
+    other: {
+      node: '6.12.3'
+    }
+  }
+};
+
+let babelPresetEnv;
+
 module.exports = ({
   basePath = process.cwd(),
-  env = {}
+  env = {},
+  envTarget,
 } = {}) => {
   if (env.node === undefined && env.browser === undefined)
     env.node = true;
@@ -20,6 +45,22 @@ module.exports = ({
     options (opts) {
       opts.output = opts.output || {};
       opts.output.interop = false;
+      if (envTarget === true) {
+        if (env.node === false || env.browser === true) {
+          if (opts.output.format === 'es')
+            envTarget = defaultEnvTargets.node.esm;
+          else
+            envTarget = defaultEnvTargets.node.other;
+        }
+        else {
+          if (opts.output.format === 'es')
+            envTarget = defaultEnvTargets.browser.esm;
+          else
+            envTarget = defaultEnvTargets.browser.other;
+        }
+        if (!babelPresetEnv)
+          babelPresetEnv = require('@babel/preset-env');
+      }
       return opts;
     },
     async resolveId (name, parent) {
@@ -92,17 +133,45 @@ module.exports = ({
       
       switch (formatCache[id]) {
         case 'esm':
+          if (envTarget) {
+            try {
+              return babel.transform(source, {
+                babelrc: false,
+                parserOpts: {
+                  plugins: stage3DynamicImport
+                },
+                ast: false,
+                filename: id,
+                sourceType: 'module',
+                presets: envTarget && [[babelPresetEnv, {
+                  modules: false,
+                  targets: envTarget
+                }]]
+              })
+            }
+            catch (err) {
+              if (err.pos || err.loc)
+                err.frame = err;
+              throw err;
+            } 
+          }
           return source;
         case 'commonjs':
           if (dew === false)
             return `import { exports, __dew__ } from "${id}?dew"; if (__dew__) __dew__(); export { exports as default };`;
           try {
             return babel.transform(source, {
+              babelrc: false,
               ast: false,
               filename: id,
               parserOpts: {
-                allowReturnOutsideFunction: true
+                allowReturnOutsideFunction: true,
+                plugins: stage3
               },
+              presets: envTarget && [[babelPresetEnv, {
+                modules: false,
+                targets: envTarget
+              }]],
               plugins: [
                 [require('babel-plugin-transform-cjs-dew'), {
                   filename: id,

@@ -8,7 +8,8 @@
     "test": "mocha -u tdd test --timeout 20000 -b"
   },
   "dependencies": {
-    "@babel/core": "^7.0.0-beta.35",
+    "@babel/core": "^7.0.0-beta.38",
+    "@babel/preset-env": "^7.0.0-beta.38",
     "babel-plugin-transform-cjs-dew": "git+ssh://git@github.com/jspm/babel-plugin-transform-cjs-dew",
     "jspm-resolve": "git+ssh://git@github.com/jspm/jspm-resolve"
   },
