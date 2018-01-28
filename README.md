@@ -22,7 +22,11 @@ export default {
   plugins: [
     jspmRollup({ 
       basePath, // defaults to process.cwd()
-      env: { browser: true, node: false } // defaults to { node: true }
+      env: { browser: true, node: false }, // defaults to { node: true }
+      // set to use @babel/preset-env
+      envTarget: {
+        browsers: 'last 2 versions'
+      }
     }),
     babelRollup() // Compose with other Rollup plugins
   ]

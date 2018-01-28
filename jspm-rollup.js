@@ -9,58 +9,27 @@ const stage3DynamicImport = stage3.concat(['dynamicImport', 'importMeta']);
 let cache = {};
 let formatCache = {};
 
-const defaultEnvTargets = {
-  browser: {
-    esm: {
-      esmodules: true
-    },
-    other: {
-      browsers: ['> 1%', 'last 2 versions', 'Firefox ESR']
-    }
-  },
-  node: {
-    esm: {
-      node: '8.9.0'
-    },
-    other: {
-      node: '6.12.3'
-    }
-  }
-};
-
 let babelPresetEnv;
 
 module.exports = ({
   basePath = process.cwd(),
   env = {},
-  envTarget,
+  envTarget
 } = {}) => {
   if (env.node === undefined && env.browser === undefined)
     env.node = true;
   if (basePath[basePath.length - 1] !== '/')
     basePath += '/';
   const nodeEnv = env.production === true || env.dev === false ? '"production"' : '"development"';
+
+  if (envTarget && !babelPresetEnv)
+    babelPresetEnv = require('@babel/preset-env');
+
   return {
     name: 'jspm-rollup',
     options (opts) {
       opts.output = opts.output || {};
       opts.output.interop = false;
-      if (envTarget === true) {
-        if (env.node === false || env.browser === true) {
-          if (opts.output.format === 'es')
-            envTarget = defaultEnvTargets.node.esm;
-          else
-            envTarget = defaultEnvTargets.node.other;
-        }
-        else {
-          if (opts.output.format === 'es')
-            envTarget = defaultEnvTargets.browser.esm;
-          else
-            envTarget = defaultEnvTargets.browser.other;
-        }
-        if (!babelPresetEnv)
-          babelPresetEnv = require('@babel/preset-env');
-      }
       return opts;
     },
     async resolveId (name, parent) {
