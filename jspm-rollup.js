@@ -83,7 +83,7 @@ module.exports = ({
       if (id.endsWith('?dew'))
         return await new Promise((resolve, reject) => fs.readFile(id.substr(0, id.length - 4), (err, source) => err ? reject(err) : resolve(source.toString())));
       const format = formatCache[id];
-      if (format === 'commonjs' || format === 'json')
+      if (format === 'cjs' || format === 'json')
         return '';
     },
     async transform (source, id) {
@@ -125,7 +125,7 @@ module.exports = ({
             } 
           }
           return source;
-        case 'commonjs':
+        case 'cjs':
           if (dew === false)
             return `import { exports, __dew__ } from "${id}?dew"; if (__dew__) __dew__(); export { exports as default };`;
           try {
