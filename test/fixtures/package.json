@@ -1,5 +1,5 @@
 {
-  "esm": true,
+  "mode": "esm",
   "map": {
     "x": "@empty"
   }
