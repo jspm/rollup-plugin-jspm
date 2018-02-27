@@ -114,7 +114,8 @@ module.exports = ({
                 sourceType: 'module',
                 presets: envTarget && [[babelPresetEnv, {
                   modules: false,
-                  targets: envTarget
+                  // this assignment pending release of https://github.com/babel/babel/pull/7438
+                  targets: Object.assign({}, envTarget)
                 }]]
               })
             }
