@@ -50,6 +50,9 @@ module.exports = ({
         ({ resolved, format } = await jspmResolve(name, parent, { cache, env }));
       }
       catch (err) {
+        // non file-URLs treated as externals
+        if (err.code === 'MODULE_NAME_URL_NOT_FILE')
+          return false;
         if (!topLevel || !err || err.code !== 'MODULE_NOT_FOUND' ||
             name.startsWith('./') || name.startsWith('../'))
           throw err;
