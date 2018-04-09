@@ -1,15 +1,11 @@
 const jspmResolve = require('jspm-resolve');
-const babel = require('@babel/core');
 const fs = require('fs');
 const path = require('path');
+const workerFarm = require('worker-farm');
 
-const stage3 = ['asyncGenerators', 'classProperties', 'optionalCatchBinding', 'objectRestSpread', 'numericSeparator'];
-const stage3DynamicImport = stage3.concat(['dynamicImport', 'importMeta']);
+let formatCache = {}, resolveCache = {};
 
-let cache = {};
-let formatCache = {};
-
-let babelPresetEnv;
+let transformWorker;
 
 module.exports = ({
   basePath = process.cwd(),
@@ -21,9 +17,6 @@ module.exports = ({
   if (basePath[basePath.length - 1] !== '/')
     basePath += '/';
   const nodeEnv = env.production === true || env.dev === false ? '"production"' : '"development"';
-
-  if (envTarget && !babelPresetEnv)
-    babelPresetEnv = require('@babel/preset-env');
 
   return {
     name: 'jspm-rollup',
@@ -47,7 +40,7 @@ module.exports = ({
 
       let resolved, format;
       try {
-        ({ resolved, format } = await jspmResolve(name, parent, { cache, env }));
+        ({ resolved, format } = await jspmResolve(name, parent, { resolveCache, env }));
       }
       catch (err) {
         // non file-URLs treated as externals
@@ -56,7 +49,7 @@ module.exports = ({
         if (!topLevel || !err || err.code !== 'MODULE_NOT_FOUND' ||
             name.startsWith('./') || name.startsWith('../'))
           throw err;
-        ({ resolved, format } = await jspmResolve('./' + name, parent, { cache, env }));
+        ({ resolved, format } = await jspmResolve('./' + name, parent, { resolveCache, env }));
       }
       
       if (!resolved) {
@@ -77,8 +70,12 @@ module.exports = ({
         return resolved;
     },
     ongenerate () {
-      cache = {};
       formatCache = {};
+      resolveCache = {};
+      if (transformWorker) {
+        workerFarm.end(transformWorker);
+        transformWorker = undefined;
+      }
     },
     async load (id) {
       if (id === '@empty' || id === '@empty?dew' || id.endsWith('?dewexternal'))
@@ -102,63 +99,27 @@ module.exports = ({
         else
           return '';
       }
-      
+
+      transformWorker = transformWorker || workerFarm({
+        maxConcurrentWorkers: require('os').cpus().length / 2,
+        maxConcurrentCallsPerWorker: 1,
+        autoStart: true
+      }, require.resolve('./transform-worker'), ['envTransform', 'dewTransform']);
+
       switch (formatCache[id]) {
         case 'esm':
           if (envTarget) {
-            try {
-              return babel.transform(source, {
-                babelrc: false,
-                parserOpts: {
-                  plugins: stage3DynamicImport
-                },
-                ast: false,
-                filename: id,
-                sourceType: 'module',
-                presets: envTarget && [[babelPresetEnv, {
-                  modules: false,
-                  // this assignment pending release of https://github.com/babel/babel/pull/7438
-                  targets: Object.assign({}, envTarget)
-                }]]
-              })
-            }
-            catch (err) {
-              if (err.pos || err.loc)
-                err.frame = err;
-              throw err;
-            } 
+            return new Promise((resolve, reject) => {
+              transformWorker.envTransform(id, source, envTarget, (err, result) => err ? reject(err) : resolve(result));
+            });
           }
           return source;
         case 'cjs':
           if (dew === false)
             return `import { exports, __dew__ } from "${id}?dew"; if (__dew__) __dew__(); export { exports as default };`;
-          try {
-            return babel.transform(source, {
-              babelrc: false,
-              ast: false,
-              filename: id,
-              parserOpts: {
-                allowReturnOutsideFunction: true,
-                plugins: stage3
-              },
-              presets: envTarget && [[babelPresetEnv, {
-                modules: false,
-                targets: envTarget
-              }]],
-              plugins: [
-                [require('babel-plugin-transform-cjs-dew'), {
-                  filename: id,
-                  define: {
-                    'process.env.NODE_ENV': nodeEnv
-                  }
-                }]
-              ]
-            });
-          }
-          catch (err) {
-            err.frame = err.codeFrame;
-            throw err;
-          }
+          return new Promise((resolve, reject) => {
+            transformWorker.dewTransform(id, source, envTarget, nodeEnv, (err, result) => err ? reject(err) : resolve(result));
+          });
         case 'addon':
           this.warn(`Cannot bundle native addon ${id} for the browser.`);
           return '';
