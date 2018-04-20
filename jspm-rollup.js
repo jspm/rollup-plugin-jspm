@@ -1,22 +1,74 @@
 const jspmResolve = require('jspm-resolve');
 const fs = require('fs');
 const path = require('path');
-const workerFarm = require('worker-farm');
+const autocompile = require('@rollup/autocompile');
 
-let formatCache = {}, resolveCache = {};
+let resolveCache = Object.create(null);
 
-let transformWorker;
+module.exports = (options = {}) => {
+  let formatCache = Object.create(null);
 
-module.exports = ({
-  basePath = process.cwd(),
-  env = {},
-  envTarget
-} = {}) => {
-  if (env.node === undefined && env.browser === undefined)
-    env.node = true;
+  let basePath = options.basePath || process.cwd();
   if (basePath[basePath.length - 1] !== '/')
     basePath += '/';
+  const env = options.env || Object.create(null);
+  if (env.node === undefined && env.browser === undefined)
+    env.node = true;
+  const envTarget = options.envTarget;
   const nodeEnv = env.production === true || env.dev === false ? '"production"' : '"development"';
+
+  const autocompileOptions = Object.assign({}, options);
+
+  const dewPlugin = [require.resolve('babel-plugin-transform-cjs-dew'), {
+    define: { 'process.env.NODE_ENV': nodeEnv }
+  }];
+  const envPreset = envTarget && [[require.resolve('@babel/preset-env'), {
+    modules: false,
+    targets: envTarget
+  }]];
+
+  function addPluginPreset (babelConfig, plugin, preset) {
+    const config = Object.assign({}, babelConfig);
+    if (plugin) {
+      config.plugins = config.plugins ? config.plugins.concat([]) : [];
+      config.plugins.push(plugin);
+    }
+    if (preset) {
+      config.presets = config.presets ? config.presets.concat([]) : [];
+      config.presets.push(plugin);
+    }
+    return config;
+  }
+
+  autocompileOptions.babel = true; // HMM
+  
+  const curCompile = autocompile.createCompilerMatcher(autocompileOptions.compile);
+  autocompileOptions.compile = autocompile.createCompilerMatcher(id => {
+    let compiler = curCompile(id);
+    const usingBabel = compiler[0] === './compilers/js.js';
+    switch (formatCache[id]) {
+      case 'esm':
+        if (usingBabel)
+          return [compiler[0], addPluginPreset(compiler[1] || {}, null, envPreset)];
+        return {
+          presets: [envPreset],
+          precompiler: compiler
+        };
+      case 'cjs':
+        // add dew plugin to existing Babel transform
+        if (usingBabel)
+          return [compiler[0], addPluginPreset(compiler[1] || {}, dewPlugin, envPreset)];
+        return {
+          presets: [envPreset],
+          plugins: [dewPlugin],
+          precompiler: compiler
+        };
+      default:
+        throw new Error(`Internal Error: Unknown module format for ${id}.`);
+    }
+  });
+
+  const autocompiler = autocompile(autocompileOptions);
 
   return {
     name: 'jspm-rollup',
@@ -25,17 +77,23 @@ module.exports = ({
       opts.output.interop = false;
       return opts;
     },
+    onbuildstart () {
+      autocompiler.onbuildstart();
+    },
+    onnbuildend () {
+      resolveCache = {};
+      formatCache = {};
+      autocompiler.onbuildend();
+    },
     async resolveId (name, parent) {
       const topLevel = !parent;
       if (topLevel)
         parent = basePath;
-      if (parent.endsWith('?dewexternal'))
-        return false;
 
       if (name[name.length - 1] === '/')
         name = name.substr(0, name.length - 1);
       
-      if (name.endsWith('?dew'))
+      if (name.endsWith('?dew.js'))
         return name;
 
       let resolved, format;
@@ -53,35 +111,38 @@ module.exports = ({
       }
       
       if (!resolved) {
-        return '@empty' + (parent.endsWith('?dew') ? '?dew' : '');
+        return '@empty' + (parent.endsWith('?dew.js') ? '?dew' : '');
       }
       else if (format === 'builtin') {
-        if (parent.endsWith('?dew'))
+        if (parent.endsWith('?dew.js'))
           return resolved + '?dewexternal';
         else
           return false;
       }
-      
+
       formatCache[resolved] = format;
 
-      if (parent.endsWith('?dew'))
-        return resolved + '?dew';
+      if (parent.endsWith('?dew.js'))
+        return resolved + '?dew.' + (format === 'json' ? 'json' : 'js');
       else
         return resolved;
     },
-    ongenerate () {
-      formatCache = {};
-      resolveCache = {};
-      if (transformWorker) {
-        workerFarm.end(transformWorker);
-        transformWorker = undefined;
-      }
+    onbuildend () {
+      formatCache = Object.create(null);
+      resolveCache = Object.create(null);
+      autocompiler.onbuildend();
     },
     async load (id) {
       if (id === '@empty' || id === '@empty?dew' || id.endsWith('?dewexternal'))
         return '';
-      if (id.endsWith('?dew'))
-        return await new Promise((resolve, reject) => fs.readFile(id.substr(0, id.length - 4), (err, source) => err ? reject(err) : resolve(source.toString())));
+      if (id.endsWith('?dew.js'))
+        return await new Promise((resolve, reject) =>
+          fs.readFile(id.substr(0, id.length - 7), (err, source) => err ? reject(err) : resolve(source.toString()))
+        );
+      if (id.endsWith('?dew.json'))
+        return await new Promise((resolve, reject) =>
+          fs.readFile(id.substr(0, id.length - 9), (err, source) => err ? reject(err) : resolve(source.toString()))
+        );
       const format = formatCache[id];
       if (format === 'cjs' || format === 'json')
         return '';
@@ -89,47 +150,40 @@ module.exports = ({
     async transform (source, id) {
       if (id.endsWith('?dewexternal'))
         return `export { default as exports } from "${id.substr(0, id.length - 12)}"; export var __dew__ = null;`;
-      const dew = id.endsWith('?dew');
-      if (dew)
-        id = id.substr(0, id.length - 4);
-      
-      if (id === '@empty') {
-        if (dew)
-          return `export var __dew__ = null; export var exports = {}`;
-        else
-          return '';
+      let dew = false;
+      if (id.endsWith('?dew.js')) {
+        id = id.substr(0, id.length - 7);
+        dew = true;
       }
-
-      transformWorker = transformWorker || workerFarm({
-        maxConcurrentWorkers: require('os').cpus().length / 2,
-        maxConcurrentCallsPerWorker: 1,
-        autoStart: true
-      }, require.resolve('./transform-worker'), ['envTransform', 'dewTransform']);
+      else if (id.endsWith('?dew.json')) {
+        id = id.substr(0, id.length - 9);
+        dew = true;
+      }
+      
+      if (id === '@empty')
+        return '';
+      if (id === '@empty?dew')
+        return `export var __dew__ = null; export var exports = {}`;
 
       switch (formatCache[id]) {
         case 'esm':
-          if (envTarget) {
-            return new Promise((resolve, reject) => {
-              transformWorker.envTransform(id, source, envTarget, (err, result) => err ? reject(err) : resolve(result));
-            });
-          }
+          if (envTarget)
+            return autocompiler.transform.call(this, source, id);
           return source;
         case 'cjs':
           if (dew === false)
-            return `import { exports, __dew__ } from "${id}?dew"; if (__dew__) __dew__(); export { exports as default };`;
-          return new Promise((resolve, reject) => {
-            transformWorker.dewTransform(id, source, envTarget, nodeEnv, (err, result) => err ? reject(err) : resolve(result));
-          });
+            return `import { exports, __dew__ } from "${id}?dew.js"; if (__dew__) __dew__(); export { exports as default };`;
+          return autocompiler.transform.call(this, source, id);
         case 'addon':
           this.warn(`Cannot bundle native addon ${id} for the browser.`);
           return '';
         case 'json':
           if (dew === false)
-            return `export { exports as default } from "${id}?dew";`;
+            return `export { exports as default } from "${id}?dew.json";`;
           else
             return `export var __dew__ = null; export var exports = ${source}`;
         default:
-          throw new Error(`Unknown format`);
+          throw new Error(`Internal Error: Unknown module format for ${id}.`);
       }
     }
   };
