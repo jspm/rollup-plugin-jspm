@@ -22,10 +22,10 @@ module.exports = (options = {}) => {
   const dewPlugin = [require.resolve('babel-plugin-transform-cjs-dew'), {
     define: { 'process.env.NODE_ENV': nodeEnv }
   }];
-  const envPreset = envTarget && [[require.resolve('@babel/preset-env'), {
+  const envPreset = envTarget && [require.resolve('@babel/preset-env'), {
     modules: false,
     targets: envTarget
-  }]];
+  }];
 
   function addPluginPreset (babelConfig, plugin, preset) {
     const config = Object.assign({}, babelConfig);
@@ -35,7 +35,7 @@ module.exports = (options = {}) => {
     }
     if (preset) {
       config.presets = config.presets ? config.presets.concat([]) : [];
-      config.presets.push(plugin);
+      config.presets.push(preset);
     }
     return config;
   }

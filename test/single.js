@@ -15,4 +15,15 @@ suite('Basic Rollup', () => {
     const { code, map } = await bundle.generate({ format: 'es' });
     assert.equal(eval(code.replace('export default', '')), path.resolve('dep'));
   });
+
+  test('Test minify', async () => {
+    const bundle = await rollup.rollup({
+      input: './main',
+      plugins: [jspmRollup({ basePath, env: { browser: true }, minify: true })]
+    });
+  
+    const { code, map } = await bundle.generate({ format: 'es' });
+    assert.ok(code.length < 5000);
+    assert.equal(eval(code.replace('export default', '')), path.resolve('dep'));
+  });
 });
