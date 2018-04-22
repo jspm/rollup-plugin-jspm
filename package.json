@@ -12,6 +12,7 @@
     "@babel/preset-env": "^7.0.0-beta.38",
     "babel-plugin-transform-cjs-dew": "git+ssh://git@github.com/jspm/babel-plugin-transform-cjs-dew",
     "jspm-resolve": "git+ssh://git@github.com/jspm/jspm-resolve",
+    "tosource": "^1.0.0",
     "worker-farm": "^1.6.0"
   },
   "devDependencies": {

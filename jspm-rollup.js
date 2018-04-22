@@ -2,6 +2,7 @@ const jspmResolve = require('jspm-resolve');
 const fs = require('fs');
 const path = require('path');
 const autocompile = require('@rollup/autocompile');
+const tosource = require('tosource');
 
 let resolveCache = Object.create(null);
 
@@ -69,6 +70,11 @@ module.exports = (options = {}) => {
   });
 
   const autocompiler = autocompile(autocompileOptions);
+
+  const minify = options.minify;
+  const _ = minify ? '' : ' ';
+  const nl = minify ? '' : '\n';
+  const t = minify ? '' : '  ';
 
   return {
     name: 'jspm-rollup',
@@ -149,7 +155,7 @@ module.exports = (options = {}) => {
     },
     async transform (source, id) {
       if (id.endsWith('?dewexternal'))
-        return `export { default as exports } from "${id.substr(0, id.length - 12)}"; export var __dew__ = null;`;
+        return `export { default as exports } from "${id.substr(0, id.length - 12)}";${nl}export var __dew__${_}=${_}null;`;
       let dew = false;
       if (id.endsWith('?dew.js')) {
         id = id.substr(0, id.length - 7);
@@ -163,7 +169,7 @@ module.exports = (options = {}) => {
       if (id === '@empty')
         return '';
       if (id === '@empty?dew')
-        return `export var __dew__ = null; export var exports = {}`;
+        return `export var __dew__${_}=${_}null;${nl}export var exports${_}=${_}{}`;
 
       switch (formatCache[id]) {
         case 'esm':
@@ -172,16 +178,17 @@ module.exports = (options = {}) => {
           return source;
         case 'cjs':
           if (dew === false)
-            return `import { exports, __dew__ } from "${id}?dew.js"; if (__dew__) __dew__(); export { exports as default };`;
+            return `import { exports, __dew__ } from "${id}?dew.js";${nl}if${_}(__dew__)${_}__dew__();${nl}export { exports as default };`;
           return autocompiler.transform.call(this, source, id);
-        case 'addon':
-          this.warn(`Cannot bundle native addon ${id} for the browser.`);
-          return '';
         case 'json':
           if (dew === false)
             return `export { exports as default } from "${id}?dew.json";`;
-          else
-            return `export var __dew__ = null; export var exports = ${source}`;
+          const parsed = JSON.parse(source);
+          const serialized = tosource(parsed, null, minify ? false : '  ');
+          return `export var __dew__${_}=${_}null;${nl}export var exports${_}=${_}${serialized}`;
+        case 'addon':
+          this.warn(`Cannot bundle native addon ${id} for the browser.`);
+          return '';
         default:
           throw new Error(`Internal Error: Unknown module format for ${id}.`);
       }
