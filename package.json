@@ -1,6 +1,6 @@
 {
   "name": "rollup-plugin-jspm",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Rollup plugin for jspm 2",
   "main": "jspm-rollup.js",
   "license": "MIT",
@@ -8,12 +8,7 @@
     "test": "mocha -u tdd test --timeout 20000 -b"
   },
   "dependencies": {
-    "@babel/core": "^7.0.0-beta.38",
-    "@babel/preset-env": "^7.0.0-beta.38",
-    "babel-plugin-transform-cjs-dew": "git+ssh://git@github.com/jspm/babel-plugin-transform-cjs-dew",
     "jspm-resolve": "git+ssh://git@github.com/jspm/jspm-resolve",
-    "tosource": "^1.0.0",
-    "worker-farm": "^1.6.0"
   },
   "devDependencies": {
     "chalk": "^2.3.0",
