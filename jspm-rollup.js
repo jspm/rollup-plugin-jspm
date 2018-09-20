@@ -31,7 +31,7 @@ module.exports = (options = {}) => {
         // non file-URLs treated as externals
         if (err.code === 'MODULE_NAME_URL_NOT_FILE')
           return false;
-        // top-level doesnt have to be relative
+        // if top-level, allow "x" to resolve first as "x" plain, then as "./x"
         if (!topLevel || !err || err.code !== 'MODULE_NOT_FOUND' ||
             name.startsWith('./') || name.startsWith('../'))
           throw err;
