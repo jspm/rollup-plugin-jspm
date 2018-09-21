@@ -11,6 +11,10 @@ module.exports = (options = {}) => {
   if (env.node === undefined && env.browser === undefined)
     env.node = true;
 
+  let browserBuiltins
+  if (typeof options.browserBuiltins === 'string')
+    browserBuiltins = options.browserBuiltins;
+
   return {
     name: 'jspm-rollup',
     options (opts) {
@@ -25,7 +29,7 @@ module.exports = (options = {}) => {
 
       let resolved, format;
       try {
-        ({ resolved, format } = await jspmResolve(name, parent, { resolveCache, env }));
+        ({ resolved, format } = await jspmResolve(name, parent, { resolveCache, env, browserBuiltins }));
       }
       catch (err) {
         // non file-URLs treated as externals
@@ -35,7 +39,7 @@ module.exports = (options = {}) => {
         if (!topLevel || !err || err.code !== 'MODULE_NOT_FOUND' ||
             name.startsWith('./') || name.startsWith('../'))
           throw err;
-        ({ resolved, format } = await jspmResolve('./' + name, parent, { resolveCache, env }));
+        ({ resolved, format } = await jspmResolve('./' + name, parent, { resolveCache, env, browserBuiltins }));
       }
       
       // builtins treated as externals
