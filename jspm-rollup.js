@@ -9,11 +9,13 @@ module.exports = (options = {}) => {
 
   const env = options.env || Object.create(null);
   if (env.node === undefined && env.browser === undefined)
-    env.node = true;
+    env.browser = true;
 
   let browserBuiltins
   if (typeof options.browserBuiltins === 'string')
     browserBuiltins = options.browserBuiltins;
+  else
+    browserBuiltins = jspmResolve.sync('jspm-node-builtins/', basePath, { resolveCache, env }).resolved;
 
   return {
     name: 'jspm-rollup',
@@ -48,6 +50,13 @@ module.exports = (options = {}) => {
         return false;
 
       return resolved;
+    },
+    transform (code, id) {
+      // size retained for source maps compatibility
+      if (env.production)
+        return code.replace(/process\.env\.NODE_ENV/g, "'production'        ");
+      else
+        return code.replace(/process\.env\.NODE_ENV/g, "'dev'               ");
     }
   };
 };
