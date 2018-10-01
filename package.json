@@ -8,7 +8,7 @@
     "test": "mocha -u tdd test --timeout 20000 -b"
   },
   "dependencies": {
-    "jspm-resolve": "git+ssh://git@github.com/jspm/jspm-resolve#rewrite"
+    "@jspm/resolve": "git+ssh://git@github.com/jspm/jspm-resolve#0.2.0"
   },
   "devDependencies": {
     "chalk": "^2.3.0",

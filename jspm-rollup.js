@@ -1,4 +1,4 @@
-const jspmResolve = require('jspm-resolve');
+const jspmResolve = require('@jspm/resolve');
 
 let resolveCache = Object.create(null);
 
