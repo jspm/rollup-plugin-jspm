@@ -15,7 +15,7 @@ module.exports = (options = {}) => {
   if (typeof options.browserBuiltins === 'string')
     browserBuiltins = options.browserBuiltins;
   else
-    browserBuiltins = jspmResolve.sync('@jspm/node-builtins/', basePath, { resolveCache, env }).resolved;
+    browserBuiltins = jspmResolve.sync('@jspm/core/nodelibs/', basePath, { resolveCache, env }).resolved;
 
   return {
     name: 'jspm-rollup',
