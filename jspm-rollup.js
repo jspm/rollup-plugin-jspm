@@ -5,7 +5,34 @@ const path = require('path');
 
 const stage3Syntax = ['asyncGenerators', 'classProperties', 'classPrivateProperties', 'classPrivateMethods', 'optionalCatchBinding', 'objectRestSpread', 'numericSeparator', 'dynamicImport', 'importMeta'];
 
-let resolveCache = Object.create(null);
+let cache = Object.create(null);
+
+const packageRegEx = /^((?:@[\-a-zA-Z\d]+[\-_\.a-zA-Z\d]*\/)?[-a-zA-Z\d][-_\.a-zA-Z\d]*)(\/|$)/;
+function getPackageMatch (name) {
+  const packageMatch = name.match(packageRegEx);
+  if (packageMatch)
+    return packageMatch[1];
+}
+
+function getPackagePath (resolved) {
+  return jspmResolve.utils.getJspmProjectPathSync(resolved, cache) ||
+      jspmResolve.utils.getPackageBoundarySync(resolved, cache);
+}
+
+function getPackageJsonExternals (resolved) {
+  let externals = [];
+  const packagePath = getPackagePath(resolved);
+  if (!packagePath)
+    return null;
+  const pcfg = jspmResolve.utils.readPackageConfigSync(packagePath, cache);
+  if (pcfg.dependencies)
+    externals = externals.concat(Object.keys(pcfg.dependencies));
+  if (pcfg.peerDependencies)
+    externals = externals.concat(Object.keys(pcfg.peerDependencies));
+  if (pcfg.optionalDependencies)
+    externals = externals.concat(Object.keys(pcfg.optionalDependencies));
+  return { packagePath, externals };
+}
 
 const FORMAT_ESM = undefined;
 const FORMAT_CJS = 1;
@@ -28,7 +55,7 @@ module.exports = (options = {}) => {
   }
   else {
     try {
-      browserBuiltins = jspmResolve.sync('@jspm/core/nodelibs/', basePath, { resolveCache, env }).resolved;
+      browserBuiltins = jspmResolve.sync('@jspm/core/nodelibs/', basePath, { cache, env }).resolved;
     }
     catch (e) {
       if (e.code !== 'MODULE_NOT_FOUND')
@@ -36,13 +63,13 @@ module.exports = (options = {}) => {
     }
     // Fallback to using internal @jspm/core
     if (!browserBuiltins) {
-      browserBuiltins = jspmResolve.sync('@jspm/core/nodelibs/', __filename, { resolveCache, env }).resolved;
+      browserBuiltins = jspmResolve.sync('@jspm/core/nodelibs/', __filename, { cache, env }).resolved;
     }
   }
 
   const externals = options.externals || [];
 
-  let moduleFormats = new Map();
+  let moduleFormats, externalsByParent;
 
   return {
     name: 'jspm-rollup',
@@ -53,11 +80,16 @@ module.exports = (options = {}) => {
     },
     buildStart () {
       moduleFormats = new Map();
+      externalsByParent = new Map();
     },
     async resolveId (name, parent) {
       const topLevel = !parent;
       if (topLevel)
         parent = basePath;
+
+      const parentExternals = externalsByParent.get(parent);
+      if (parentExternals && parentExternals.externals.includes(getPackageMatch(name)))
+        return false;
 
       const cjsResolve = moduleFormats.get(parent) & (FORMAT_CJS | FORMAT_CJS_DEW);
 
@@ -66,7 +98,7 @@ module.exports = (options = {}) => {
 
       let resolved, format;
       try {
-        ({ resolved, format } = await jspmResolve(name, parent, { resolveCache, env, browserBuiltins, cjsResolve }));
+        ({ resolved, format } = await jspmResolve(name, parent, { cache, env, browserBuiltins, cjsResolve }));
       }
       catch (err) {
         // non file-URLs treated as externals
@@ -81,7 +113,7 @@ module.exports = (options = {}) => {
         if (!topLevel || !err || err.code !== 'MODULE_NOT_FOUND' ||
             name.startsWith('./') || name.startsWith('../'))
           throw err;
-        ({ resolved, format } = await jspmResolve('./' + name, parent, { resolveCache, env, browserBuiltins, cjsResolve }));
+        ({ resolved, format } = await jspmResolve('./' + name, parent, { cache, env, browserBuiltins, cjsResolve }));
       }
 
       // builtins treated as externals
@@ -99,6 +131,15 @@ module.exports = (options = {}) => {
             resolved += '?entry';
           moduleFormats.set(resolved, cjsResolve ? FORMAT_CJS_DEW : FORMAT_CJS);
         break;
+      }
+
+      if (topLevel) {
+        externalsByParent.set(resolved, getPackageJsonExternals(resolved));
+      }
+      else if (parentExternals) {
+        const resolvedPkgPath = getPackagePath(resolved);
+        if (resolvedPkgPath === parentExternals.packagePath)
+          externalsByParent.set(resolved, parentExternals);
       }
 
       return resolved;
@@ -145,7 +186,7 @@ module.exports = (options = {}) => {
               // try resolve optional dependencies
               // if they dont resolve, return null now
               try {
-                jspmResolve.sync(depId, id, { resolveCache, env, browserBuiltins, cjsResolve: true });
+                jspmResolve.sync(depId, id, { cache, env, browserBuiltins, cjsResolve: true });
               }
               catch (e) {
                 return null;
@@ -175,12 +216,14 @@ module.exports = (options = {}) => {
           wildcardExtensions: ['.js', '.json', '.node'],
           // externals are ESM dependencies
           esmDependencies: dep => {
-            if (externals.indexOf(dep) !== -1)
+            const parentExternals = externalsByParent.get(id);
+            if (parentExternals && parentExternals.externals.includes(getPackageMatch(dep)) ||
+                externals.indexOf(dep) !== -1)
               return true;
             if (dep in jspmResolve.builtins === false)
               return false;
             try {
-              ({ format } = jspmResolve.sync(dep, id, { resolveCache, env, browserBuiltins, cjsResolve: true }));
+              ({ format } = jspmResolve.sync(dep, id, { cache, env, browserBuiltins, cjsResolve: true }));
               return format === 'builtin' || format === 'module';
             }
             catch (e) {

@@ -19,7 +19,7 @@ suite('Syntax error messages', () => {
       });
     }
     catch (err) {
-      if (err.frame.toString().indexOf(`import a 'asdf'`) === -1 || err.frame.toString().indexOf('^') === -1)
+      if (err.toString().indexOf(`import a 'asdf'`) === -1 || err.toString().indexOf('^') === -1)
         assert(false);
     }
   });
@@ -30,7 +30,6 @@ suite('Dynamic import', () => {
     const build = await rollup.rollup({
       onwarn () {},
       input: `${fixturesPath}/dynamic-import.js`,
-      experimentalDynamicImport: true,
       plugins: [jspmRollup()]
     });
     const { code, map } = await build.generate({ format: 'es' });
