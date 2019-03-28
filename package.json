@@ -7,6 +7,7 @@
   "scripts": {
     "test": "mocha -u tdd test --timeout 20000 -b"
   },
+  "type": "commonjs",
   "dependencies": {
     "@babel/core": "^7.3.4",
     "@jspm/core": "^1.0.2",
