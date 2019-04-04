@@ -134,7 +134,7 @@ module.exports = (options = {}) => {
       }
 
       if (topLevel) {
-        if (options.inlineDeps)
+        if (!options.inlineDeps)
           externalsByParent.set(resolved, getPackageJsonExternals(resolved));
       }
       else if (parentExternals) {
