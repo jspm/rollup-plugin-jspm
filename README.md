@@ -26,7 +26,9 @@ export default {
       // set to use @babel/preset-env
       envTarget: {
         browsers: 'last 2 versions'
-      }
+      },
+      // dont treat jspm package.json "dependencies" as external
+      inlineDeps: true
     }),
     babelRollup() // Compose with other Rollup plugins
   ]

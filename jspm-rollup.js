@@ -134,7 +134,8 @@ module.exports = (options = {}) => {
       }
 
       if (topLevel) {
-        externalsByParent.set(resolved, getPackageJsonExternals(resolved));
+        if (opts.inlineDeps)
+          externalsByParent.set(resolved, getPackageJsonExternals(resolved));
       }
       else if (parentExternals) {
         const resolvedPkgPath = getPackagePath(resolved);
