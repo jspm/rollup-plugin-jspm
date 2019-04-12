@@ -81,6 +81,7 @@ module.exports = (options = {}) => {
     buildStart () {
       moduleFormats = new Map();
       externalsByParent = new Map();
+      cache = Object.create(null);
     },
     async resolveId (name, parent) {
       const topLevel = !parent;
