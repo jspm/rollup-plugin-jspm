@@ -15,8 +15,8 @@ function getPackageMatch (name) {
 }
 
 function getPackagePath (resolved) {
-  return jspmResolve.utils.getJspmProjectPathSync(resolved, cache) ||
-      jspmResolve.utils.getPackageBoundarySync(resolved, cache);
+  return jspmResolve.utils.getJspmProjectPathSync.call(jspmResolve.fs, resolved, cache) ||
+      jspmResolve.utils.getPackageBoundarySync.call(jspmResolve.fs, resolved, cache);
 }
 
 function getPackageJsonExternals (resolved) {
@@ -24,7 +24,7 @@ function getPackageJsonExternals (resolved) {
   const packagePath = getPackagePath(resolved);
   if (!packagePath)
     return null;
-  const pcfg = jspmResolve.utils.readPackageConfigSync(packagePath, cache);
+  const pcfg = jspmResolve.utils.readPackageConfigSync.call(jspmResolve.fs, packagePath, cache);
   if (pcfg.dependencies)
     externals = externals.concat(Object.keys(pcfg.dependencies));
   if (pcfg.peerDependencies)
