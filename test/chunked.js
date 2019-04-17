@@ -1,14 +1,16 @@
-const assert = require('assert');
-const fs = require('fs');
-const path = require('path');
-const rollup = require('rollup');
-const jspmRollup = require('../jspm-rollup');
+import assert from 'assert';
+import fs from 'fs';
+import path from 'path';
+import rollup from 'rollup';
+import jspmRollup from '../src/jspm-rollup.js';
 
 const winSepRegEx = /\\/g;
 
 const basePath = path.resolve('.').replace(winSepRegEx, '/');
 const fixturesPath = path.resolve('./test/fixtures').replace(winSepRegEx, '/');
 const outFixtures = path.resolve('./test/out').replace(winSepRegEx, '/');
+
+throw 'Test suite currently out of sync with Rollup and jspm updates.\nThanks for taking a look!\nPRs very welcome to get this running on latest Rollup and jspm 2.';
 
 suite('Syntax error messages', () => {
   test('Basic syntax error', async () => {
@@ -19,7 +21,7 @@ suite('Syntax error messages', () => {
       });
     }
     catch (err) {
-      if (err.toString().indexOf(`import a 'asdf'`) === -1 || err.toString().indexOf('^') === -1)
+      if (JSON.stringify(err).indexOf(`import a 'asdf'`) === -1 || JSON.stringify(err).indexOf('^') === -1)
         assert(false);
     }
   });
@@ -32,7 +34,7 @@ suite('Dynamic import', () => {
       input: `${fixturesPath}/dynamic-import.js`,
       plugins: [jspmRollup()]
     });
-    const { code, map } = await build.generate({ format: 'es' });
+    const { output: [{ code, map }] } = await build.generate({ format: 'es' });
     assert.equal(code.indexOf(`import('chalk')`), -1, 'Dynamic import must be remapped');
     assert.deepEqual(build.modules.map(module => module.id).sort(), [
       'node_modules/ansi-styles/index.js?dew.js',

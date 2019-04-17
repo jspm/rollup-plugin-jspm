@@ -1,7 +1,7 @@
-const rollup = require('rollup');
-const jspmRollup = require('../jspm-rollup');
-const path = require('path');
-const assert = require('assert');
+import rollup from 'rollup';
+import jspmRollup from '../src/jspm-rollup.js';
+import path from 'path';
+import assert from 'assert';
 
 suite('Basic Rollup', () => {
   const basePath = path.resolve('test/fixtures/basic');

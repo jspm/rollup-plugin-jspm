@@ -1,9 +1,7 @@
-'use strict';
-
-var jspmResolve = require('@jspm/resolve');
-var babel = require('@babel/core');
-var dewTransformPlugin = require('babel-plugin-transform-cjs-dew');
-var path = require('path');
+import jspmResolve from '@jspm/resolve';
+import babel from '@babel/core';
+import dewTransformPlugin from 'babel-plugin-transform-cjs-dew';
+import path from 'path';
 
 const stage3Syntax = ['asyncGenerators', 'classProperties', 'classPrivateProperties', 'classPrivateMethods', 'optionalCatchBinding', 'objectRestSpread', 'numericSeparator', 'dynamicImport', 'importMeta'];
 
@@ -42,7 +40,7 @@ const FORMAT_CJS_DEW = 2;
 const FORMAT_JSON = 4;
 const FORMAT_JSON_DEW = 8;
 
-module.exports = (options = {}) => {
+export default (options = {}) => {
   let basePath = options.basePath || process.cwd();
   if (basePath[basePath.length - 1] !== '/')
     basePath += '/';
@@ -51,7 +49,7 @@ module.exports = (options = {}) => {
   if (env.node === undefined && env.browser === undefined)
     env.browser = true;
 
-  let browserBuiltins;
+  let browserBuiltins
   if (typeof options.browserBuiltins === 'string') {
     browserBuiltins = options.browserBuiltins;
   }

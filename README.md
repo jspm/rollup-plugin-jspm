@@ -27,8 +27,8 @@ export default {
       envTarget: {
         browsers: 'last 2 versions'
       },
-      // dont treat jspm package.json "dependencies" as external
-      inlineDeps: true
+      // map of externals to aliased or true
+      externals: {}
     }),
     babelRollup() // Compose with other Rollup plugins
   ]

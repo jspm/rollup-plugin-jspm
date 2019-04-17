@@ -5,7 +5,8 @@
   "main": "jspm-rollup.js",
   "license": "MIT",
   "scripts": {
-    "test": "mocha -u tdd test --timeout 20000 -b"
+    "build": "jspm build src/jspm-rollup.js -d . -f commonjs --node",
+    "test": "jspm test/test.js"
   },
   "dependencies": {
     "@babel/core": "^7.3.4",
@@ -18,5 +19,6 @@
     "lodash": "^4.17.4",
     "mocha": "^4.0.1",
     "rollup": "^1.8.0"
-  }
+  },
+  "type": "commonjs"
 }
