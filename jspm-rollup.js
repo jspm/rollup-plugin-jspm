@@ -70,7 +70,7 @@ var jspmRollup = (options = {}) => {
         // resolve externals to populate externalsMap
         // TODO: support scoped externals
         externalsPromise = Promise.all(Object.entries(externals).map(async ([name, alias]) => {
-          const { resolved } = await jspmResolve(name, basePath, { cache, env, browserBuiltins, cjsResolve });
+          const { resolved } = await jspmResolve(name, basePath, { cache, env, browserBuiltins });
           externalsMap.set(resolved, alias);
         }));
       }
@@ -87,7 +87,7 @@ var jspmRollup = (options = {}) => {
 
       let resolved, format;
       try {
-        ({ resolved, format } = await jspmResolve(name, parent, { cache, env, browserBuiltins }));
+        ({ resolved, format } = await jspmResolve(name, parent, { cache, env, browserBuiltins, cjsResolve }));
       }
       catch (err) {
         // non file-URLs treated as externals
