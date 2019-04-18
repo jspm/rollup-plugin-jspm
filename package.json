@@ -5,7 +5,7 @@
   "main": "jspm-rollup.js",
   "license": "MIT",
   "scripts": {
-    "build": "jspm build src/jspm-rollup.js -d . -f commonjs --node",
+    "build": "jspm build ./src/jspm-rollup.js -d . -f commonjs --node -e @babel/core @jspm/resolve babel-plugin-transform-cjs-dew",
     "test": "jspm test/test.js"
   },
   "files": ["jspm-rollup.js"],

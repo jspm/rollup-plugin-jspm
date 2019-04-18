@@ -96,6 +96,7 @@ export default (options = {}) => {
           console.warn(`jspm could not find ${name} from ${parent}, treating as external.`);
           return false;
         }
+        throw err;
         // if top-level, allow "x" to resolve first as "x" plain, then as "./x"
         // Disabled for now - staying strict!
         /* if (!topLevel || !err || err.code !== 'MODULE_NOT_FOUND' ||
@@ -125,12 +126,11 @@ export default (options = {}) => {
       if (externals) {
         await externalsPromise;
         let id = externalsMap.get(resolved);
-        let external = id !== undefined;
-        if (!external)
-          id = resolved;
-        else if (id === true)
-          id = name;
-        return { id, external };
+        if (id !== undefined) {
+          if (id === true)
+            id = name;
+          return { id, external: true };
+        }
       }
 
       return resolved;
