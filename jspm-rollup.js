@@ -87,7 +87,7 @@ var jspmRollup = (options = {}) => {
 
       let resolved, format;
       try {
-        ({ resolved, format } = await jspmResolve(name, parent, { cache, env, browserBuiltins, cjsResolve }));
+        ({ resolved, format } = await jspmResolve(name, parent, { cache, env, browserBuiltins }));
       }
       catch (err) {
         // non file-URLs treated as externals
