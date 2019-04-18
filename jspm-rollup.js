@@ -1,5 +1,7 @@
 'use strict';
 
+Object.defineProperty(exports, '__esModule', { value: true });
+
 var jspmResolve = require('@jspm/resolve');
 var babel = require('@babel/core');
 var dewTransformPlugin = require('babel-plugin-transform-cjs-dew');
@@ -9,40 +11,13 @@ const stage3Syntax = ['asyncGenerators', 'classProperties', 'classPrivatePropert
 
 let cache = Object.create(null);
 
-const packageRegEx = /^((?:@[\-a-zA-Z\d]+[\-_\.a-zA-Z\d]*\/)?[-a-zA-Z\d][-_\.a-zA-Z\d]*)(\/|$)/;
-function getPackageMatch (name) {
-  const packageMatch = name.match(packageRegEx);
-  if (packageMatch)
-    return packageMatch[1];
-}
-
-function getPackagePath (resolved) {
-  return jspmResolve.utils.getJspmProjectPathSync.call(jspmResolve.fs, resolved, cache) ||
-      jspmResolve.utils.getPackageBoundarySync.call(jspmResolve.fs, resolved, cache);
-}
-
-function getPackageJsonExternals (resolved) {
-  let externals = [];
-  const packagePath = getPackagePath(resolved);
-  if (!packagePath)
-    return null;
-  const pcfg = jspmResolve.utils.readPackageConfigSync.call(jspmResolve.fs, packagePath, cache);
-  if (pcfg.dependencies)
-    externals = externals.concat(Object.keys(pcfg.dependencies));
-  if (pcfg.peerDependencies)
-    externals = externals.concat(Object.keys(pcfg.peerDependencies));
-  if (pcfg.optionalDependencies)
-    externals = externals.concat(Object.keys(pcfg.optionalDependencies));
-  return { packagePath, externals };
-}
-
 const FORMAT_ESM = undefined;
 const FORMAT_CJS = 1;
 const FORMAT_CJS_DEW = 2;
 const FORMAT_JSON = 4;
 const FORMAT_JSON_DEW = 8;
 
-module.exports = (options = {}) => {
+var jspmRollup = (options = {}) => {
   let basePath = options.basePath || process.cwd();
   if (basePath[basePath.length - 1] !== '/')
     basePath += '/';
@@ -69,9 +44,17 @@ module.exports = (options = {}) => {
     }
   }
 
-  const externals = options.externals || [];
+  let externals;
+  if (options.externals instanceof Array) {
+    externals = {};
+    for (const ext of externals)
+      externals[ext] = true;
+  }
+  else {
+    externals = options.externals;
+  }
 
-  let moduleFormats, externalsByParent;
+  let moduleFormats, externalsMap, externalsPromise;
 
   return {
     name: 'jspm-rollup',
@@ -82,17 +65,22 @@ module.exports = (options = {}) => {
     },
     buildStart () {
       moduleFormats = new Map();
-      externalsByParent = new Map();
       cache = Object.create(null);
+
+      if (externals) {
+        externalsMap = new Map();
+        // resolve externals to populate externalsMap
+        // TODO: support scoped externals
+        externalsPromise = Promise.all(Object.entries(externals).map(async ([name, alias]) => {
+          const { resolved } = await jspmResolve(name, basePath, { cache, env, browserBuiltins, cjsResolve });
+          externalsMap.set(resolved, alias);
+        }));
+      }
     },
     async resolveId (name, parent) {
       const topLevel = !parent;
       if (topLevel)
         parent = basePath;
-
-      const parentExternals = externalsByParent.get(parent);
-      if (parentExternals && parentExternals.externals.includes(getPackageMatch(name)))
-        return false;
 
       const cjsResolve = moduleFormats.get(parent) & (FORMAT_CJS | FORMAT_CJS_DEW);
 
@@ -138,14 +126,15 @@ module.exports = (options = {}) => {
         break;
       }
 
-      if (topLevel) {
-        if (!options.inlineDeps)
-          externalsByParent.set(resolved, getPackageJsonExternals(resolved));
-      }
-      else if (parentExternals) {
-        const resolvedPkgPath = getPackagePath(resolved);
-        if (resolvedPkgPath === parentExternals.packagePath)
-          externalsByParent.set(resolved, parentExternals);
+      if (externals) {
+        await externalsPromise;
+        let id = externalsMap.get(resolved);
+        let external = id !== undefined;
+        if (!external)
+          id = resolved;
+        else if (id === true)
+          id = name;
+        return { id, external };
       }
 
       return resolved;
@@ -222,10 +211,11 @@ module.exports = (options = {}) => {
           wildcardExtensions: ['.js', '.json', '.node'],
           // externals are ESM dependencies
           esmDependencies: dep => {
-            const parentExternals = externalsByParent.get(id);
-            if (parentExternals && parentExternals.externals.includes(getPackageMatch(dep)) ||
-                externals.indexOf(dep) !== -1)
-              return true;
+            if (externals) {
+              const resolved = jspmResolve.sync(dep, id, { cache, env, browserBuiltins });
+              if (externalsMap.has(resolved))
+                return true;
+            }
             if (dep in jspmResolve.builtins === false)
               return false;
             try {
@@ -243,3 +233,5 @@ module.exports = (options = {}) => {
     }
   };
 };
+
+exports.default = jspmRollup;

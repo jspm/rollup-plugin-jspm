@@ -8,6 +8,7 @@
     "build": "jspm build src/jspm-rollup.js -d . -f commonjs --node",
     "test": "jspm test/test.js"
   },
+  "files": ["jspm-rollup.js"],
   "dependencies": {
     "@babel/core": "^7.3.4",
     "@jspm/core": "^1.0.2",
