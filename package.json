@@ -8,12 +8,14 @@
     "build": "jspm build ./src/jspm-rollup.js -d . -f commonjs --node -e @babel/core @jspm/resolve babel-plugin-transform-cjs-dew",
     "test": "jspm test/test.js"
   },
-  "files": ["jspm-rollup.js"],
+  "files": [
+    "jspm-rollup.js"
+  ],
   "dependencies": {
     "@babel/core": "^7.3.4",
     "@jspm/core": "^1.0.2",
-    "@jspm/resolve": "git+ssh://git@github.com/jspm/jspm-resolve#master",
-    "babel-plugin-transform-cjs-dew": "git+ssh://git@github.com/jspm/babel-plugin-transform-cjs-dew.git#master"
+    "@jspm/resolve": "^1.0.0",
+    "babel-plugin-transform-cjs-dew": "^1.0.0"
   },
   "devDependencies": {
     "chalk": "^2.3.0",
