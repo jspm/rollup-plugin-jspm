@@ -54,11 +54,20 @@ var jspmRollup = (options = {}) => {
 
   let moduleFormats, externalsMap, externalsPromise;
 
+  let returnExternal = false;
+
   return {
     name: 'jspm-rollup',
     options (opts) {
       opts.output = opts.output || {};
       opts.output.interop = false;
+      opts.external = function () {
+        if (returnExternal) {
+          returnExternal = false;
+          return true;
+        }
+        return false;
+      };
       return opts;
     },
     buildStart () {
@@ -73,6 +82,19 @@ var jspmRollup = (options = {}) => {
           const { resolved } = await jspmResolve(name, basePath, { cache, env, browserBuiltins });
           externalsMap.set(resolved, alias);
         }));
+      }
+    },
+    async resolveDynamicImport (specifier, parentId) {
+      if (typeof specifier === 'string' && !this.isExternal(specifier, parentId, false)) {
+        // HACKS for Rollup core externals fixes
+        const resolved = await this.resolveId(specifier, parentId);
+        if (resolved.external) {
+          if (resolved.id === specifier)
+            return false;
+          returnExternal = true;
+          return resolved.id;
+        }
+        return resolved;
       }
     },
     async resolveId (name, parent) {
