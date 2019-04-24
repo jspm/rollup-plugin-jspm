@@ -1,6 +1,6 @@
 {
   "name": "rollup-plugin-jspm",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Rollup plugin for jspm 2",
   "main": "jspm-rollup.js",
   "license": "MIT",
