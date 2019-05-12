@@ -1,6 +1,6 @@
 # rollup-plugin-jspm
 
-Integrate [JSPM](https://github.com/jspm/jspm2-cli) with rollup.
+Integrate [jspm](https://github.com/jspm/jspm-cli) with rollup.
 
 ## Installation
 
