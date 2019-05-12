@@ -1,6 +1,6 @@
 {
   "name": "rollup-plugin-jspm",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Rollup plugin for jspm 2",
   "main": "jspm-rollup.js",
   "license": "MIT",
@@ -21,7 +21,7 @@
     "chalk": "^2.3.0",
     "lodash": "^4.17.4",
     "mocha": "^4.0.1",
-    "rollup": "^1.8.0"
+    "rollup": "^1.11.3"
   },
   "type": "commonjs"
 }
