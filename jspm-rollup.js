@@ -7,6 +7,8 @@ var path = require('path');
 
 const stage3Syntax = ['asyncGenerators', 'classProperties', 'classPrivateProperties', 'classPrivateMethods', 'optionalCatchBinding', 'objectRestSpread', 'numericSeparator', 'dynamicImport', 'importMeta'];
 
+const browserBuiltinList = ['@empty', '@empty.dew', 'assert', 'buffer', 'console', 'constants', 'crypto', 'domain', 'events', 'http', 'https', 'os', 'path', 'process', 'punycode', 'querystring', 'stream', 'string_decoder', 'sys', 'timers', 'tty', 'url', 'util', 'vm', 'zlib'];
+
 let cache = Object.create(null);
 
 const FORMAT_ESM = undefined;
@@ -72,14 +74,18 @@ var jspmRollup = (options = {}) => {
         externalsPromise = Promise.all(Object.entries(externals).map(async ([name, alias]) => {
           try {
             // package may not have a main
-            const { resolved } = await jspmResolve(name, basePath, { cache, env, browserBuiltins });
+            const { resolved, format } = await jspmResolve(name, basePath, { cache, env });
+            if (format === 'builtin')
+              return true;
             externalsMap.set(resolved, alias);
           }
           catch (e) {
             if (e.code !== 'MODULE_NOT_FOUND' || e.toString().indexOf('No package main defined') === -1)
               throw e;
           }
-          const { resolved: resolvedPath } = await jspmResolve(name + '/', basePath, { cache, env, browserBuiltins });
+          const { resolved: resolvedPath, format } = await jspmResolve(name + '/', basePath, { cache, env });
+          if (format === 'builtin')
+            return true;
           externalsMap.set(resolvedPath, alias === true ? alias : alias + '/');
         }));
       }
@@ -96,7 +102,7 @@ var jspmRollup = (options = {}) => {
 
       let resolved, format;
       try {
-        ({ resolved, format } = await jspmResolve(name, parent, { cache, env, browserBuiltins, cjsResolve }));
+        ({ resolved, format } = await jspmResolve(name, parent, { cache, env, cjsResolve }));
       }
       catch (err) {
         // non file-URLs treated as externals
@@ -104,7 +110,7 @@ var jspmRollup = (options = {}) => {
           return false;
         // non top-level not found treated as externals, but with a warning
         if (err.code === 'MODULE_NOT_FOUND' && !topLevel && !name.startsWith('./') && !name.startsWith('../')) {
-          console.warn(`jspm could not find ${name} from ${parent}, treating as external.`);
+          console.warn(`jspm could not find ${name} from ${parent} treating as external.`);
           return false;
         }
         throw err;
@@ -113,15 +119,22 @@ var jspmRollup = (options = {}) => {
         /* if (!topLevel || !err || err.code !== 'MODULE_NOT_FOUND' ||
             name.startsWith('./') || name.startsWith('../'))
           throw err;
-        ({ resolved, format } = await jspmResolve('./' + name, parent, { cache, env, browserBuiltins, cjsResolve }));
+        ({ resolved, format } = await jspmResolve('./' + name, parent, { cache, env, cjsResolve }));
         */
       }
 
-      // builtins treated as externals
-      // (builtins only emitted as builtins from resolver for Node, not browser)
       switch (format) {
         case 'builtin':
-          return false;
+          // builtins treated as externals in Node
+          if (env.browser) {
+            if (browserBuiltinList.includes(name))
+              return browserBuiltins + name + '.js';
+            else
+              return browserBuiltins + '@empty.js';
+          }
+          else {
+            return false;
+          }
         case 'addon':
           throw new Error('jspm CommonJS addon requires not yet supported in builds loading ' + resolved);
         case 'json':
@@ -198,7 +211,7 @@ var jspmRollup = (options = {}) => {
               // try resolve optional dependencies
               // if they dont resolve, return null now
               try {
-                jspmResolve.sync(depId, id, { cache, env, browserBuiltins, cjsResolve: true });
+                jspmResolve.sync(depId, id, { cache, env, cjsResolve: true });
               }
               catch (e) {
                 return null;
@@ -228,15 +241,17 @@ var jspmRollup = (options = {}) => {
           wildcardExtensions: ['.js', '.json', '.node'],
           // externals are ESM dependencies
           esmDependencies: dep => {
-            if (externals) {
-              try {
-                var { resolved } = jspmResolve.sync(dep, id, { cache, env, browserBuiltins, cjsResolve: true });
-              }
-              catch (e) {
-                if (e.code !== 'MODULE_NOT_FOUND')
-                  throw e;
+            try {
+              var { resolved, format } = jspmResolve.sync(dep, id, { cache, env, cjsResolve: true });
+              if (format === 'builtin' || format === 'module')
                 return true;
-              }
+            }
+            catch (e) {
+              if (e.code !== 'MODULE_NOT_FOUND')
+                throw e;
+              return true;
+            }
+            if (externals) { 
               if (externalsMap.has(resolved))
                 return true;
               for (const external of externalsMap.keys()) {
@@ -244,15 +259,6 @@ var jspmRollup = (options = {}) => {
                 if (resolved.startsWith(external))
                   return true;
               }
-            }
-            if (jspmResolve.builtins.indexOf(dep) !== -1)
-              return true;
-            try {
-              ({ format } = jspmResolve.sync(dep, id, { cache, env, browserBuiltins, cjsResolve: true }));
-              return format === 'builtin' || format === 'module';
-            }
-            catch (e) {
-              return false;
             }
           },
           filename: `import.meta.url.startsWith('file:') ? decodeURI(import.meta.url.slice(7 + (typeof process !== 'undefined' && process.platform === 'win32'))) : new URL(import.meta.url).pathname`,
