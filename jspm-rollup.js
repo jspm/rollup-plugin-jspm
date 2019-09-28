@@ -70,9 +70,16 @@ var jspmRollup = (options = {}) => {
         // resolve externals to populate externalsMap
         // TODO: support scoped externals
         externalsPromise = Promise.all(Object.entries(externals).map(async ([name, alias]) => {
-          const { resolved } = await jspmResolve(name, basePath, { cache, env, browserBuiltins });
+          try {
+            // package may not have a main
+            const { resolved } = await jspmResolve(name, basePath, { cache, env, browserBuiltins });
+            externalsMap.set(resolved, alias);
+          }
+          catch (e) {
+            if (e.code !== 'MODULE_NOT_FOUND' || e.toString().indexOf('No package main defined') === -1)
+              throw e;
+          }
           const { resolved: resolvedPath } = await jspmResolve(name + '/', basePath, { cache, env, browserBuiltins });
-          externalsMap.set(resolved, alias);
           externalsMap.set(resolvedPath, alias === true ? alias : alias + '/');
         }));
       }
@@ -222,7 +229,14 @@ var jspmRollup = (options = {}) => {
           // externals are ESM dependencies
           esmDependencies: dep => {
             if (externals) {
-              const { resolved } = jspmResolve.sync(dep, id, { cache, env, browserBuiltins, cjsResolve: true });
+              try {
+                var { resolved } = jspmResolve.sync(dep, id, { cache, env, browserBuiltins, cjsResolve: true });
+              }
+              catch (e) {
+                if (e.code !== 'MODULE_NOT_FOUND')
+                  throw e;
+                return true;
+              }
               if (externalsMap.has(resolved))
                 return true;
               for (const external of externalsMap.keys()) {
