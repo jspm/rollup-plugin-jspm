@@ -71,7 +71,9 @@ var jspmRollup = (options = {}) => {
         // TODO: support scoped externals
         externalsPromise = Promise.all(Object.entries(externals).map(async ([name, alias]) => {
           const { resolved } = await jspmResolve(name, basePath, { cache, env, browserBuiltins });
+          const { resolved: resolvedPath } = await jspmResolve(name + '/', basePath, { cache, env, browserBuiltins });
           externalsMap.set(resolved, alias);
+          externalsMap.set(resolvedPath, alias === true ? alias : alias + '/');
         }));
       }
     },
@@ -132,6 +134,16 @@ var jspmRollup = (options = {}) => {
           if (id === true)
             id = name;
           return { id, external: true };
+        }
+        for (const external of externalsMap.keys()) {
+          if (!external.endsWith('/')) continue;
+          if (resolved.startsWith(external)) {
+            let id = externalsMap.get(external);
+            if (id === true)
+              id = getPackageName(name) + '/';
+            id = id + resolved.slice(external.length);
+            return { id, external: true };
+          }
         }
       }
 
@@ -210,12 +222,17 @@ var jspmRollup = (options = {}) => {
           // externals are ESM dependencies
           esmDependencies: dep => {
             if (externals) {
-              const resolved = jspmResolve.sync(dep, id, { cache, env, browserBuiltins });
+              const { resolved } = jspmResolve.sync(dep, id, { cache, env, browserBuiltins, cjsResolve: true });
               if (externalsMap.has(resolved))
                 return true;
+              for (const external of externalsMap.keys()) {
+                if (!external.endsWith('/')) continue;
+                if (resolved.startsWith(external))
+                  return true;
+              }
             }
-            if (dep in jspmResolve.builtins === false)
-              return false;
+            if (jspmResolve.builtins.indexOf(dep) !== -1)
+              return true;
             try {
               ({ format } = jspmResolve.sync(dep, id, { cache, env, browserBuiltins, cjsResolve: true }));
               return format === 'builtin' || format === 'module';
@@ -233,3 +250,19 @@ var jspmRollup = (options = {}) => {
 };
 
 module.exports = jspmRollup;
+
+function getPackageName (name) {
+  const sepIndex = name.indexOf('/');
+  if (name[0] !== '@') {
+    if (sepIndex === -1)
+      return name;
+    return name.slice(0, sepIndex);
+  }
+  // invalid name, but allow
+  if (sepIndex === -1)
+    return name;
+  const nextSepIndex = name.indexOf('/', sepIndex + 1);
+  if (nextSepIndex === -1)
+    return name;
+  return name.slice(0, nextSepIndex);
+}
