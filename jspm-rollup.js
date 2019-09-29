@@ -241,6 +241,8 @@ var jspmRollup = (options = {}) => {
           wildcardExtensions: ['.js', '.json', '.node'],
           // externals are ESM dependencies
           esmDependencies: dep => {
+            if (dep.endsWith('/'))
+              dep = dep.slice(0, dep.length - 1);
             try {
               var { resolved, format } = jspmResolve.sync(dep, id, { cache, env, cjsResolve: true });
               if (format === 'builtin' || format === 'module')
