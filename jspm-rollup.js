@@ -102,7 +102,7 @@ var jspmRollup = (options = {}) => {
 
       let resolved, format;
       try {
-        ({ resolved, format } = await jspmResolve(name, parent, { cache, env, cjsResolve }));
+        ({ resolved, format } = await jspmResolve(name, parent, { cache, env, cjsResolve, isMain: topLevel }));
       }
       catch (err) {
         // non file-URLs treated as externals
@@ -175,6 +175,11 @@ var jspmRollup = (options = {}) => {
       return null;
     },
     transform (code, id) {
+      // TODO: reapply
+      const hashbang = code.match(/^#!([^\r\n]*)[\r\n$]/);
+      if (hashbang) {
+        code = ' '.repeat(hashbang[0].length) + code.slice(hashbang[0].length);
+      }
       // size retained for source maps compatibility
       if (env.production)
         code = code.replace(/process\.env\.NODE_ENV/g, "'production'        ");
