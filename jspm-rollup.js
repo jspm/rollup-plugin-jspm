@@ -22,10 +22,12 @@ var jspmRollup = (options = {}) => {
   if (basePath[basePath.length - 1] !== '/')
     basePath += '/';
 
-  const env = options.env || Object.create(null);
-  if (env.node === undefined && env.browser === undefined)
-    env.browser = true;
+  let env = options.env || [];
+  if (env.indexOf('node') === -1 && env.indexOf('browser') === -1)
+    env.push('browser');
 
+  env = [...env, 'module', 'default'];
+  
   let browserBuiltins;
   if (typeof options.browserBuiltins === 'string') {
     browserBuiltins = options.browserBuiltins;
@@ -126,7 +128,7 @@ var jspmRollup = (options = {}) => {
       switch (format) {
         case 'builtin':
           // builtins treated as externals in Node
-          if (env.browser) {
+          if (env.indexOf('browser') !== -1) {
             if (browserBuiltinList.includes(name))
               return browserBuiltins + name + '.js';
             else
@@ -181,7 +183,7 @@ var jspmRollup = (options = {}) => {
         code = ' '.repeat(hashbang[0].length) + code.slice(hashbang[0].length);
       }
       // size retained for source maps compatibility
-      if (env.production)
+      if (env.indexOf('production') !== -1)
         code = code.replace(/process\.env\.NODE_ENV/g, "'production'        ");
       else
         code = code.replace(/process\.env\.NODE_ENV/g, "'dev'               ");
@@ -210,7 +212,7 @@ var jspmRollup = (options = {}) => {
           plugins: stage3Syntax
         },
         plugins: [[dewTransformPlugin, {
-          browserOnly: env.browser,
+          browserOnly: env.indexOf('browser') !== -1,
           resolve: (depId, opts) => {
             if (opts.optional) {
               // try resolve optional dependencies
