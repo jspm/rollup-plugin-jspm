@@ -43,7 +43,7 @@ export default (options = {}) => {
   let externals;
   if (options.externals instanceof Array) {
     externals = {};
-    for (const ext of externals)
+    for (const ext of options.externals)
       externals[ext] = true;
   }
   else {
