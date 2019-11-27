@@ -149,13 +149,13 @@ export default (options = {}) => {
 
       switch (moduleFormats.get(id)) {
         case FORMAT_ESM:
-          return code;
+          return { code, map: null };
         case FORMAT_JSON:
-          return 'export default ' + code;
+          return { code: 'export default ' + code, map: null };
         case FORMAT_JSON_DEW:
-          return `export function dew () {\n  return exports;\n}\nvar exports = ${code};\n`;
+          return { code: `export function dew () {\n  return exports;\n}\nvar exports = ${code};\n`, map: null };
         case FORMAT_CJS:
-          return code;
+          return { code, map: null };
       }
       
       // FORMAT_CJS_DEW
