@@ -5,7 +5,7 @@ var babel = require('@babel/core');
 var dewTransformPlugin = require('babel-plugin-transform-cjs-dew');
 var path = require('path');
 
-const stage3Syntax = ['asyncGenerators', 'classProperties', 'classPrivateProperties', 'classPrivateMethods', 'optionalCatchBinding', 'objectRestSpread', 'numericSeparator', 'dynamicImport', 'importMeta'];
+const stage3Syntax = ['asyncGenerators', 'classProperties', 'classPrivateProperties', 'classPrivateMethods', 'dynamicImport', 'importMeta', 'nullishCoalescingOperator', 'numericSeparator', 'optionalCatchBinding', 'optionalChaining', 'objectRestSpread', 'topLevelAwait'];
 
 const browserBuiltinList = ['@empty', '@empty.dew', 'assert', 'buffer', 'console', 'constants', 'crypto', 'domain', 'events', 'http', 'https', 'os', 'path', 'process', 'punycode', 'querystring', 'stream', 'string_decoder', 'sys', 'timers', 'tty', 'url', 'util', 'vm', 'zlib'];
 
@@ -144,7 +144,7 @@ var jspmRollup = (options = {}) => {
         break;
         case 'commonjs':
           if (!cjsResolve)
-            resolved += '?entry';
+            resolved += '?dewentry';
           moduleFormats.set(resolved, cjsResolve ? FORMAT_CJS_DEW : FORMAT_CJS);
         break;
       }
@@ -172,7 +172,7 @@ var jspmRollup = (options = {}) => {
       return resolved;
     },
     load (id) {
-      if (id.endsWith('?entry'))
+      if (id.endsWith('?dewentry'))
         return `import { dew } from "./${path.basename(id.substr(0, id.length - 6))}";\nexport default dew();`;
       return null;
     },
@@ -200,6 +200,7 @@ var jspmRollup = (options = {}) => {
       }
       
       // FORMAT_CJS_DEW
+      const browserOnly = env.indexOf('browser') !== -1;
       return babel.transform(code, {
         filename: id,
         babelrc: false,
@@ -212,7 +213,7 @@ var jspmRollup = (options = {}) => {
           plugins: stage3Syntax
         },
         plugins: [[dewTransformPlugin, {
-          browserOnly: env.indexOf('browser') !== -1,
+          browserOnly,
           resolve: (depId, opts) => {
             if (opts.optional) {
               // try resolve optional dependencies
@@ -260,7 +261,7 @@ var jspmRollup = (options = {}) => {
                 throw e;
               return true;
             }
-            if (externals) { 
+            if (externals) {
               if (externalsMap.has(resolved))
                 return true;
               for (const external of externalsMap.keys()) {
@@ -270,8 +271,12 @@ var jspmRollup = (options = {}) => {
               }
             }
           },
-          filename: `import.meta.url.startsWith('file:') ? decodeURI(import.meta.url.slice(7 + (typeof process !== 'undefined' && process.platform === 'win32'))) : new URL(import.meta.url).pathname`,
-          dirname: `import.meta.url.startsWith('file:') ? decodeURI(import.meta.url.slice(0, import.meta.url.lastIndexOf('/')).slice(7 + (typeof process !== 'undefined' && process.platform === 'win32'))) : new URL(import.meta.url.slice(0, import.meta.url.lastIndexOf('/'))).pathname`
+          filename: browserOnly
+            ? `new URL(import.meta.url).pathname`
+            : `import.meta.url.startsWith('file:') ? decodeURI(import.meta.url.slice(7 + (typeof process !== 'undefined' && process.platform === 'win32'))) : new URL(import.meta.url).pathname`,
+          dirname: browserOnly
+            ? `new URL(import.meta.url.slice(0, import.meta.url.lastIndexOf('/'))).pathname`
+            : `import.meta.url.startsWith('file:') ? decodeURI(import.meta.url.slice(0, import.meta.url.lastIndexOf('/')).slice(7 + (typeof process !== 'undefined' && process.platform === 'win32'))) : new URL(import.meta.url.slice(0, import.meta.url.lastIndexOf('/'))).pathname`
         }]]
       });
     }
