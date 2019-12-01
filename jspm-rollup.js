@@ -173,7 +173,7 @@ var jspmRollup = (options = {}) => {
     },
     load (id) {
       if (id.endsWith('?dewentry'))
-        return `import { dew } from "./${path.basename(id.substr(0, id.length - 6))}";\nexport default dew();`;
+        return `import { dew } from "./${path.basename(id.substr(0, id.length - 9))}";\nexport default dew();`;
       return null;
     },
     transform (code, id) {
