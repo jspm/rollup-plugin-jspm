@@ -1,37 +1,48 @@
-# rollup-plugin-jspm
+# @jspm/plugin-rollup
 
-Integrate [jspm](https://github.com/jspm/jspm-cli) with rollup.
+Standards-based JSPM Rollup plugin, including:
+
+* All module references as URLs
+* Support for resolving packages via node_modules or CDN providers
+* Fully compatible with Node.js resolution semantics
+* Support for import maps
+* Support for TypeScript
 
 ## Installation
 
 ```bash
-npm install --save-dev rollup-plugin-jspm
+npm install @jspm/plugin-rollup rollup --save-dev
 ```
 
 ## Usage
-```js
-// rollup.config.js
-import path from 'path';
-import babelRollup from 'rollup-plugin-babel';
-import jspmRollup from 'rollup-plugin-jspm';
 
-const basePath = path.resolve('components');
+rollup.config.js
+```js
+import jspmRollup from '@jspm/plugin-rollup';
+
+const baseUrl = new URL('./components', import.meta.url);
 
 export default {
-  input: './main.js', // Will resolve to 'components/main.js'
+  // Important to use "./" here to indicate a local path
+  // and not a package. Resolved to baseUrl below.
+  input: './main.js',
   plugins: [
-    jspmRollup({ 
-      basePath, // defaults to process.cwd()
-      env: { browser: true, node: false }, // defaults to { node: true }
-      // set to use @babel/preset-env
-      envTarget: {
-        browsers: 'last 2 versions'
-      },
+    jspmRollup({
+      baseUrl,
+
+      // Generator options as per @jspm/generator
+      defaultProvider: 'nodemodules',
+      env: ['browser'],
+
       // map of externals to aliased or true
-      externals: {}
-    }),
-    babelRollup() // Compose with other Rollup plugins
+      externals: {
+        react: 'custom-react'
+      }
+    })
   ]
 }
+```
 
+```
+rollup -c
 ```

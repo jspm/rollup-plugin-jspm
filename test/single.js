@@ -1,29 +1,29 @@
-import rollup from 'rollup';
-import jspmRollup from '../src/jspm-rollup.js';
+import * as rollup from 'rollup';
+import jspmRollup from '@jspm/plugin-rollup';
 import path from 'path';
 import assert from 'assert';
 
 suite('Basic Rollup', () => {
-  const basePath = path.resolve('test/fixtures/basic');
+  const baseUrl = new URL('./fixtures/basic/', import.meta.url);
 
   test('Test', async () => {
     const bundle = await rollup.rollup({
-      input: './main',
-      plugins: [jspmRollup({ basePath, env: { browser: true } })]
+      input: './main.js',
+      plugins: [jspmRollup({ baseUrl, env: ['browser'] })]
     });
   
-    const { code, map } = await bundle.generate({ format: 'es' });
-    assert.equal(eval(code.replace('export default', '')), path.resolve('dep'));
+    const { output: [{ code, map: _map }] } = await bundle.generate({ format: 'esm' });
+    assert.strictEqual(eval(code.replace('export default', '')), path.resolve('dep'));
   });
 
   test('Test minify', async () => {
     const bundle = await rollup.rollup({
-      input: './main',
-      plugins: [jspmRollup({ basePath, env: { browser: true }, minify: true })]
+      input: './main.js',
+      plugins: [jspmRollup({ baseUrl, env: ['browser'], minify: true })]
     });
   
-    const { code, map } = await bundle.generate({ format: 'es' });
-    assert.ok(code.length < 5000);
-    assert.equal(eval(code.replace('export default', '')), path.resolve('dep'));
+    const { output: [{ code, map: _map }] } = await bundle.generate({ format: 'esm' });
+    assert.ok(code.length < 7000);
+    assert.strictEqual(eval(code.replace('export default', '')), path.resolve('dep'));
   });
 });
