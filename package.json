@@ -14,8 +14,8 @@
   "dependencies": {
     "@babel/core": "^7.14.8",
     "@babel/preset-typescript": "^7.14.5",
-    "@jspm/core": "github:jspm/core#main",
-    "@jspm/generator": "github:jspm/generator#main",
+    "@jspm/core": "^2.0.0-beta.8",
+    "@jspm/generator": "^1.0.0-beta.11",
     "@jspm/import-map": "^0.1.5",
     "babel-plugin-transform-cjs-dew": "github:jspm/babel-plugin-transform-cjs-dew#main",
     "terser": "^5.7.1"
