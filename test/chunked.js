@@ -3,7 +3,6 @@ import fs from 'fs';
 import * as rollup from 'rollup';
 import jspmRollup from '@jspm/plugin-rollup';
 import { fileURLToPath } from 'url';
-import child_process from 'child_process';
 
 const baseUrl = new URL('../', import.meta.url);
 const fixturesUrl = new URL('./fixtures', import.meta.url);

@@ -92,8 +92,7 @@ export default ({ baseUrl, defaultProvider = 'nodemodules', env = ['browser', 'd
 
       // (async () => {
       //   for await (const { type, message } of generator.logStream()) {
-      //     if (message.indexOf('*') !== -1)
-      //       console.log(`${type}: ${message}`);
+      //     console.log(`${type}: ${message}`);
       //   }
       // })();
       

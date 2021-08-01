@@ -6,7 +6,7 @@
   "exports": "./jspm-rollup.js",
   "license": "MIT",
   "scripts": {
-    "test": "node --conditions test test/test.js"
+    "test": "node test/test.js"
   },
   "files": [
     "jspm-rollup.js"
