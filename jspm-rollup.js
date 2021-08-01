@@ -15,6 +15,7 @@ const FORMAT_ESM = undefined;
 const FORMAT_CJS = 1;
 const FORMAT_CJS_DEW = 2;
 const FORMAT_JSON = 4;
+const FORMAT_TYPESCRIPT = 8;
 
 export default ({ baseUrl, defaultProvider = 'nodemodules', env = ['browser', 'development'], minify, externals, inputMap } = {}) => {
   if (baseUrl) {
@@ -44,7 +45,8 @@ export default ({ baseUrl, defaultProvider = 'nodemodules', env = ['browser', 'd
     externals = _externals;
   }
 
-  let moduleFormats, externalsMap, generator, processBuiltinResolved, bufferBuiltinResolved, importMap, terser;
+  let terser, generator, importMap, moduleFormats, externalsMap,
+    bufferBuiltinResolved, moduleBuiltinResolved, processBuiltinResolved, builtinResolvedErr;
 
   return {
     name: '@jspm/plugin-rollup',
@@ -78,34 +80,40 @@ export default ({ baseUrl, defaultProvider = 'nodemodules', env = ['browser', 'd
 
       return opts;
     },
+    get logStream () {
+      return generator.logStream;
+    },
     async buildStart (opts) {
       moduleFormats = new Map();
       cache = Object.create(null);
 
       // run the generator phase _first_
       generator = new Generator({ mapUrl: baseUrl, env, defaultProvider, inputMap });
+
+      // (async () => {
+      //   for await (const { type, message } of generator.logStream()) {
+      //     if (message.indexOf('*') !== -1)
+      //       console.log(`${type}: ${message}`);
+      //   }
+      // })();
       
       if (minify && !terser)
         terser = await import('terser');
 
       // always trace process and buffer builtins
-      await generator.traceInstall('process');
-      await generator.traceInstall('buffer');
-
-      processBuiltinResolved = generator.importMap.resolve('process');
-      bufferBuiltinResolved = generator.importMap.resolve('buffer');
-
       try {
-        await Promise.all(Object.values(opts.input).map(async specifier => {
-          await generator.traceInstall(specifier, baseUrl);
-        }));
+        await Promise.all([generator.traceInstall('process'), generator.traceInstall('buffer'), generator.traceInstall('module')]);
+        processBuiltinResolved = generator.importMap.resolve('process');
+        bufferBuiltinResolved = generator.importMap.resolve('buffer');
+        moduleBuiltinResolved = generator.importMap.resolve('module');
       }
-      catch (e) {
-        // We do not throw MODULE_NOT_FOUND errors
-        // Instead we surface these during the build phase
-        if (!(e.message.startsWith('Module not found') || e.code === 'MODULE_NOT_FOUND'))
-          throw e;
+      catch (err) {
+        builtinResolvedErr = err;
       }
+
+      await Promise.all(Object.values(opts.input).map(async specifier => {
+        await generator.traceInstall(specifier, baseUrl);
+      }));
 
       // Pending next Generator update
       importMap = new ImportMap(generator.importMap.baseUrl, generator.importMap.toJSON());
@@ -136,10 +144,10 @@ export default ({ baseUrl, defaultProvider = 'nodemodules', env = ['browser', 'd
       if (!resolved)
         throw new Error('Module not found: ' + name + ' in ' + parent);
 
-      if (resolved.endsWith('.json'))
-        throw new Error('TODO: JSON');
-
-      const format = generator.getAnalysis(resolved).format;
+      if (resolved.endsWith('/'))
+        throw new Error('Trailing slash resolution for ' + name + ' in ' + parent);
+      if (resolved.endsWith('.'))
+        throw new Error('Trailing dot resolution for ' + name + ' in ' + parent);
 
       if (resolved === null) {
         // non top-level not found treated as externals, but with a warning
@@ -150,11 +158,14 @@ export default ({ baseUrl, defaultProvider = 'nodemodules', env = ['browser', 'd
         throw new Error('Module not found: ' + name + ' imported from ' + parent);
       }
 
+      const format = generator.getAnalysis(resolved).format;
+
+      if (resolved.startsWith('node:'))
+        return { id: resolved.slice(5), external: true };
+
       // builtins treated as externals
       // (builtins only emitted as builtins from resolver for Node, not browser)
       switch (format) {
-        case 'builtin':
-          return false;
         case 'json':
           moduleFormats.set(resolved, FORMAT_JSON);
         break;
@@ -162,6 +173,9 @@ export default ({ baseUrl, defaultProvider = 'nodemodules', env = ['browser', 'd
           if (!cjsResolve)
             resolved += '?entry';
           moduleFormats.set(resolved, cjsResolve ? FORMAT_CJS_DEW : FORMAT_CJS);
+        break;
+        case 'typescript':
+          moduleFormats.set(resolved, FORMAT_TYPESCRIPT);
         break;
       }
 
@@ -186,13 +200,28 @@ export default ({ baseUrl, defaultProvider = 'nodemodules', env = ['browser', 'd
         case FORMAT_ESM:
           return { code, map: null };
         case FORMAT_JSON:
-          // Ensure valid JSON
-          JSON.parse(code);
           return { code: 'export default ' + code, map: null };
-        // case FORMAT_JSON_DEW:
-        //   return { code: `export function dew () {\n  return exports;\n}\nvar exports = ${code};\n`, map: null };
         case FORMAT_CJS:
           return { code, map: null };
+        case FORMAT_TYPESCRIPT:
+          return babel.transform(code, {
+            filename: id,
+            babelrc: false,
+            highlightCode: false,
+            compact: false,
+            sourceType: 'module',
+            sourceMaps: true,
+            parserOpts: {
+              allowReturnOutsideFunction: true,
+              // plugins: stage3Syntax
+            },
+            presets: ['@babel/preset-typescript']
+          });
+        case FORMAT_CJS_DEW:
+          // fallthrough
+        break;
+        default:
+          throw new Error('Unexpected format');
       }
 
       // FORMAT_CJS_DEW
@@ -213,20 +242,50 @@ export default ({ baseUrl, defaultProvider = 'nodemodules', env = ['browser', 'd
             'process.env.NODE_ENV': 'production' in env ? '"production"' : '"dev"'
           },
           resolve: (depId, opts) => {
-            if (depId === 'process')
-              return processBuiltinResolved;
-            if (depId === 'buffer')
-              return bufferBuiltinResolved;
+            // CommonJS always gets trailing "/" stripped
+            // Specifics of these resolution differences handled as best as possible in generator
+            // Although packages using both / and non-/ forms have ambiguity
+            if (depId.endsWith('/../') || depId === '../') {
+              if (!(depId.startsWith('/') || depId.startsWith('./') || depId.startsWith('../')))
+                throw new Error('Unable to resolve ' + depId + ' in ' + id + ' as the final segment mapping is unknown.');
+              const resolved = new URL(depId, id).href;
+              const lastSegmentIndex = resolved.lastIndexOf('/', resolved.length - 2);
+              const lastSegment = resolved.slice(lastSegmentIndex, -1);
+              depId += '..' + lastSegment;
+            }
+            else if (depId.endsWith('/')) {
+              depId = depId.slice(0, -1);
+            }
 
-            if (opts.optional)
-              return importMap.resolve(depId, id) || depId;
+            if (depId === 'process') {
+              if (builtinResolvedErr)
+                throw builtinResolvedErr;
+              return processBuiltinResolved;
+            }
+            if (depId === 'buffer') {
+              if (builtinResolvedErr)
+                throw builtinResolvedErr;
+              return bufferBuiltinResolved;
+            }
+            if (depId === 'module') {
+              if (builtinResolvedErr)
+                throw builtinResolvedErr;
+              return moduleBuiltinResolved;
+            }
+
+            if (opts.optional) {
+              const resolved = importMap.resolve(depId, id);
+              if (!resolved)
+                throw new Error('Could not resolve optional ' + resolved + ' in ' + id);
+              return depId;
+            }
 
             if (opts.wildcard) {
               // we can only wildcard resolve internal requires
-              if (!pattern.startsWith('./') && !pattern.startsWith('../'))
+              if (!depId.startsWith('./') && !depId.startsWith('../'))
                 return;
-              const glob = path.resolve(depId, pattern);
-              throw new Error('CJS wildcards not yet supported, please post an issue.');
+              const glob = new URL(depId, id);
+              throw new Error(`TODO: CJS wildcard: ${glob}`);
               //const wildcardPath = path.relative(pkgBasePath, path.resolve(filePath.substr(0, filePath.lastIndexOf(path.sep)), pattern)).replace(/\\/g, '/');
               //const wildcardPattern = new RegExp('^' + wildcardPath.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*'));
               /*const matches = Object.keys(files).filter(file => file.match(wildcardPattern) && (file.endsWith('.js') || file.endsWith('.json') || file.endsWith('.node')));
@@ -240,14 +299,31 @@ export default ({ baseUrl, defaultProvider = 'nodemodules', env = ['browser', 'd
                 return relPath;
               });*/
             }
+
+            return depId;
           },
           wildcardExtensions: ['.js', '.json', '.node'],
           // externals are ESM dependencies
-          esmDependencies: dep => {
-            if (dep === 'process' || dep === 'buffer')
+          esmDependencies: depId => {
+            if (depId.endsWith('/../') || depId === '../') {
+              if (!(depId.startsWith('/') || depId.startsWith('./') || depId.startsWith('../')))
+                throw new Error('Unable to resolve ' + depId + ' in ' + id + ' as the final segment mapping is unknown.');
+              const resolved = new URL(depId, id).href;
+              const lastSegmentIndex = resolved.lastIndexOf('/', resolved.length - 2);
+              const lastSegment = resolved.slice(lastSegmentIndex, -1);
+              depId += '..' + lastSegment;
+            }
+            else if (depId.endsWith('/')) {
+              depId = depId.slice(0, -1);
+            }
+            if (depId === 'buffer' || depId === 'module' || depId === 'process')
               return true;
-            const resolved = importMap.resolve(dep, id);
-            return generator.getAnalysis(resolved).format === 'esm';
+            const resolved = importMap.resolve(depId, id);
+            if (!resolved)
+              throw new Error('Could not resolve ' + depId + ' in ' + id);
+            const { format } = generator.getAnalysis(resolved);
+            // TODO: externals = 'namespace-interop'
+            return format === 'esm' || format === 'json' ? true : false;
           },
           filename: `import.meta.url.startsWith('file:') ? decodeURI(import.meta.url.slice(7 + (typeof process !== 'undefined' && process.platform === 'win32'))) : new URL(import.meta.url).pathname`,
           dirname: `import.meta.url.startsWith('file:') ? decodeURI(import.meta.url.slice(0, import.meta.url.lastIndexOf('/')).slice(7 + (typeof process !== 'undefined' && process.platform === 'win32'))) : new URL(import.meta.url.slice(0, import.meta.url.lastIndexOf('/'))).pathname`

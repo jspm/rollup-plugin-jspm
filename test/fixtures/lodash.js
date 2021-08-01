@@ -1,4 +1,4 @@
-import sortBy from 'lodash/sortBy';
+import sortBy from 'lodash/sortBy.js';
 import assert from 'assert';
 
 var users = [

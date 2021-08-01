@@ -13,7 +13,7 @@ suite('Basic Rollup', () => {
     });
   
     const { output: [{ code, map: _map }] } = await bundle.generate({ format: 'esm' });
-    assert.strictEqual(eval(code.replace('export default', '')), path.resolve('dep'));
+    assert.strictEqual(eval(code.replace(/export \{ (\w+) as default \}/, '$1')), path.resolve('dep'));
   });
 
   test('Test minify', async () => {
@@ -23,7 +23,17 @@ suite('Basic Rollup', () => {
     });
   
     const { output: [{ code, map: _map }] } = await bundle.generate({ format: 'esm' });
-    assert.ok(code.length < 7000);
-    assert.strictEqual(eval(code.replace('export default', '')), path.resolve('dep'));
+    assert.ok(code.length < 7100);
+    assert.strictEqual(eval(code.replace(/export\{(\w+) as default\}/, '$1')), path.resolve('dep'));
+  });
+
+  test('Test TypeScript', async () => {
+    const bundle = await rollup.rollup({
+      input: './test.ts',
+      plugins: [jspmRollup({ baseUrl, env: ['browser'] })]
+    });
+  
+    const { output: [{ code, map: _map }] } = await bundle.generate({ format: 'esm' });
+    assert.strictEqual(eval(code.replace(/export \{ (\w+) \}/, '$1')), 5);
   });
 });
