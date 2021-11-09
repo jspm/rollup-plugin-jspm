@@ -5,6 +5,10 @@
   "main": "jspm-rollup.js",
   "exports": "./jspm-rollup.js",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jspm/rollup-plugin-jspm.git"
+  },
   "scripts": {
     "test": "node test/test.js"
   },
