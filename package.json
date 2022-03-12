@@ -13,7 +13,8 @@
     "test": "node test/test.js"
   },
   "files": [
-    "jspm-rollup.js"
+    "jspm-rollup.js",
+    "identifier.mjs"
   ],
   "dependencies": {
     "@babel/core": "^7.14.8",
