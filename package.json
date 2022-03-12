@@ -26,6 +26,7 @@
   },
   "devDependencies": {
     "chalk": "^2.3.0",
+    "cjs-module-lexer": "^1.2.2",
     "lodash": "^4.17.4",
     "mocha": "^9.0.2",
     "rollup": "^2.55.1"

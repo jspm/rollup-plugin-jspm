@@ -3,6 +3,7 @@ import babel from '@babel/core';
 import dewTransformPlugin from 'babel-plugin-transform-cjs-dew';
 import path from 'path';
 import { Generator, fetch } from '@jspm/generator';
+import * as cjsModuleLexer from 'cjs-module-lexer';
 
 // TODO:
 // - ImportMap resolve to support env
@@ -10,6 +11,68 @@ import { Generator, fetch } from '@jspm/generator';
 // - 
 
 let cache = Object.create(null);
+let namedExportsCache = new Map();
+await cjsModuleLexer.init();
+
+function getCjsNamedExports (id, source, moduleFormats) {
+  const cached = namedExportsCache.get(id);
+  if (cached)
+    return cached;
+  const format = moduleFormats.get(id);
+
+  // CJS -> ESM does not support named export module.exports = tracing
+  if (format !== FORMAT_CJS && format !== FORMAT_CJS_DEW)
+    return [];
+
+  var exports, reexports;
+  try {
+    ({ exports, reexports } = cjsModuleLexer.parse(source));
+  } catch (e) {
+    throw new Error('Lexer error parsing ' + id + ': ' + e.message);
+  }
+  const exportNames = new Set(exports);
+
+  // Set first for cycles.
+  namedExportsCache.set(id, exports);
+
+  return [...exportNames].filter(expt => isIdentifier(expt));
+
+  // for (const reexport of reexports) {
+  //   const resolved = parentInfo.map[reexport];
+  //   if (!resolved)
+  //     continue;
+  //   const external = cdn ? resolved.cdnExternal : resolved.external;
+  //   if (external)
+  //     continue;
+  //   const id = cdn ? dev && resolved.devId || resolved.cdnId : resolved.id;
+  //   const reexportNames = getCjsNamedExports(id);
+  //   for (const name of reexportNames)
+  //     exportNames.add(name);
+  // }
+
+  // return [...exportNames].filter(expt => isIdentifier(expt));
+}
+
+function createDewNamedExportsBlock (cjsNamedExports, n, _, entry) {
+  let exportsId = 'exports';
+  let i = 0;
+  while (cjsNamedExports.includes(exportsId))
+    exportsId = 'exports' + ++i;
+  let source = `const ${exportsId}${_}=${_}dew();${n}export default ${exportsId};${n}`;
+  if (cjsNamedExports.length) {
+    const aliased = [];
+    for (const expt of cjsNamedExports) {
+      if (expt === 'default' || expt === '__dew')
+        continue;
+      aliased.push(expt);
+    }
+    if (aliased.length)
+      source += `var ${aliased.map(alias => `_$${alias}${_}=${_}${exportsId}['${alias}']`).join(`,${_}`)};${n}`;
+    if (aliased.length || entry)
+      source += `export${_}{${_}${aliased.map(alias => `_$${alias} as ${alias}`).join(`,${_}`)}${aliased.length && entry ? '' : ', '}${entry ? '' : 'dew as __dew'}${_}}${n}`;
+  }
+  return source;
+}
 
 const FORMAT_ESM = undefined;
 const FORMAT_CJS = 1;
@@ -190,8 +253,11 @@ export default ({ baseUrl, defaultProvider = 'nodemodules', env = ['browser', 'd
       return resolved;
     },
     async load (id) {
-      if (id.endsWith('?entry'))
-        return `import { dew } from "./${path.basename(id.substr(0, id.length - 6))}";\nexport default dew();`;
+      if (id.endsWith('?entry')) {
+        const source = await (await fetch(id.slice(0, -6))).text();
+        return `import { dew } from "./${path.basename(id.slice(0, -6))}";` +
+          '\n' + createDewNamedExportsBlock(getCjsNamedExports(id, source, moduleFormats), '\n', ' ', true);
+      }
       return (await fetch(id)).text();
     },
     transform (code, id) {

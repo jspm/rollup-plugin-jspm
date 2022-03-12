@@ -1,0 +1,5 @@
+version = 0.1
+
+[[task]]
+name = 'test'
+run = 'node test/test.js'

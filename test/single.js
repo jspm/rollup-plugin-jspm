@@ -23,7 +23,7 @@ suite('Basic Rollup', () => {
     });
   
     const { output: [{ code, map: _map }] } = await bundle.generate({ format: 'esm' });
-    assert.ok(code.length < 7100);
+    assert.ok(code.length < 8000);
     assert.strictEqual(eval(code.replace(/export\{(\w+) as default\}/, '$1')), path.resolve('dep'));
   });
 
