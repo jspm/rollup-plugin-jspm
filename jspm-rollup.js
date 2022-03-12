@@ -4,6 +4,7 @@ import dewTransformPlugin from 'babel-plugin-transform-cjs-dew';
 import path from 'path';
 import { Generator, fetch } from '@jspm/generator';
 import * as cjsModuleLexer from 'cjs-module-lexer';
+import { isIdentifier } from './identifier.mjs';
 
 // TODO:
 // - ImportMap resolve to support env
