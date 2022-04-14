@@ -23,6 +23,7 @@
     "@jspm/generator": "^1.0.0-beta.11",
     "@jspm/import-map": "^0.1.5",
     "babel-plugin-transform-cjs-dew": "github:jspm/babel-plugin-transform-cjs-dew#main",
+    "cjs-module-lexer": "^1.2.2",
     "terser": "^5.7.1"
   },
   "devDependencies": {
