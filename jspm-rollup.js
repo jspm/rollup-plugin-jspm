@@ -175,11 +175,11 @@ export default ({ baseUrl, defaultProvider = 'nodemodules', env = ['browser', 'd
       }
 
       await Promise.all(Object.values(opts.input).map(async specifier => {
-        await generator.traceInstall(specifier, baseUrl);
+        await generator.traceInstall(specifier, baseUrl.href);
       }));
 
       // Pending next Generator update
-      importMap = new ImportMap(generator.importMap.baseUrl, generator.importMap.toJSON());
+      importMap = new ImportMap(generator.importMap.mapUrl, generator.importMap.toJSON());
 
       if (externals) {
         externalsMap = new Map();
