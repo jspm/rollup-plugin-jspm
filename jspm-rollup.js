@@ -221,10 +221,10 @@ export default ({ baseUrl, defaultProvider = 'nodemodules', env = ['browser', 'd
         throw new Error('Module not found: ' + name + ' imported from ' + parent);
       }
 
-      const format = generator.getAnalysis(resolved).format;
-
       if (resolved.startsWith('node:'))
-        return { id: resolved.slice(5), external: true };
+        return { id: resolved.slice(5), external: true };      
+
+      const format = generator.getAnalysis(resolved).format;
 
       // builtins treated as externals
       // (builtins only emitted as builtins from resolver for Node, not browser)
@@ -339,13 +339,6 @@ export default ({ baseUrl, defaultProvider = 'nodemodules', env = ['browser', 'd
               return moduleBuiltinResolved;
             }
 
-            if (opts.optional) {
-              const resolved = importMap.resolve(depId, id);
-              if (!resolved)
-                throw new Error('Could not resolve optional ' + resolved + ' in ' + id);
-              return depId;
-            }
-
             if (opts.wildcard) {
               // we can only wildcard resolve internal requires
               if (!depId.startsWith('./') && !depId.startsWith('../'))
@@ -364,6 +357,13 @@ export default ({ baseUrl, defaultProvider = 'nodemodules', env = ['browser', 'd
                   relPath = './' + relPath;
                 return relPath;
               });*/
+            }
+
+            if (opts.optional) {
+              const resolved = importMap.resolve(depId, id);
+              if (!resolved)
+                throw new Error('Could not resolve optional ' + depId + ' in ' + id);
+              return depId;
             }
 
             return depId;
@@ -387,8 +387,9 @@ export default ({ baseUrl, defaultProvider = 'nodemodules', env = ['browser', 'd
             const resolved = importMap.resolve(depId, id);
             if (!resolved)
               throw new Error('Could not resolve ' + depId + ' in ' + id);
+            if (resolved.startsWith('node:'))
+              return true;
             const { format } = generator.getAnalysis(resolved);
-            // TODO: externals = 'namespace-interop'
             return format === 'esm' || format === 'json' ? true : false;
           },
           filename: `import.meta.url.startsWith('file:') ? decodeURI(import.meta.url.slice(7 + (typeof process !== 'undefined' && process.platform === 'win32'))) : new URL(import.meta.url).pathname`,
