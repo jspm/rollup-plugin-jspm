@@ -108,7 +108,7 @@ suite('Chunked builds', () => {
 
     const { output: [babel, lodash] } = await bundle.write({ format: 'esm', dir: outFixturesPath });
 
-    assert.strictEqual(Object.keys(babel.modules).length, 277);
+    assert.strictEqual(Object.keys(babel.modules).length, 306);
     assert.strictEqual(Object.keys(lodash.modules).length, 138);
 
     // test we can execute (assertions in code)

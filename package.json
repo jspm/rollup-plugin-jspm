@@ -17,22 +17,21 @@
     "identifier.mjs"
   ],
   "dependencies": {
-    "@babel/core": "^7.14.8",
-    "@babel/preset-typescript": "^7.14.5",
+    "@babel/core": "^7.25.2",
+    "@babel/preset-typescript": "^7.24.7",
     "@jspm/core": "^2.0.0-beta.8",
-    "@jspm/generator": "^1.0.0-beta.11",
-    "@jspm/import-map": "^0.1.5",
+    "@jspm/generator": "^2.1.3",
+    "@jspm/import-map": "^1.1.0",
     "babel-plugin-transform-cjs-dew": "github:jspm/babel-plugin-transform-cjs-dew#main",
-    "cjs-module-lexer": "^1.2.2",
-    "terser": "^5.7.1",
-    "typescript": "^4.8.4"
+    "cjs-module-lexer": "^1.3.1",
+    "terser": "^5.31.3",
+    "typescript": "^5.5.4"
   },
   "devDependencies": {
     "chalk": "^2.3.0",
-    "cjs-module-lexer": "^1.2.2",
     "lodash": "^4.17.4",
     "mocha": "^9.0.2",
-    "rollup": "^2.55.1"
+    "rollup": "^4.20.0"
   },
   "type": "module"
 }

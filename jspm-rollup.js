@@ -152,20 +152,14 @@ export default ({ baseUrl, defaultProvider = 'nodemodules', env = ['browser', 'd
       cache = Object.create(null);
 
       // run the generator phase _first_
-      generator = new Generator({ mapUrl: baseUrl, env, defaultProvider, inputMap });
-
-      // (async () => {
-      //   for await (const { type, message } of generator.logStream()) {
-      //     console.log(`${type}: ${message}`);
-      //   }
-      // })();
+      generator = new Generator({ mapUrl: baseUrl, env, defaultProvider, inputMap, commonJS: true, typeScript: true });
       
       if (minify && !terser)
         terser = await import('terser');
 
       // always trace process and buffer builtins
       try {
-        await Promise.all([generator.traceInstall('process'), generator.traceInstall('buffer'), generator.traceInstall('module')]);
+        await Promise.all([generator.link('process'), generator.link('buffer'), generator.link('module')]);
         processBuiltinResolved = generator.importMap.resolve('process');
         bufferBuiltinResolved = generator.importMap.resolve('buffer');
         moduleBuiltinResolved = generator.importMap.resolve('module');
@@ -175,11 +169,14 @@ export default ({ baseUrl, defaultProvider = 'nodemodules', env = ['browser', 'd
       }
 
       await Promise.all(Object.values(opts.input).map(async specifier => {
-        await generator.traceInstall(specifier, baseUrl.href);
+        await generator.link(specifier, baseUrl.href);
       }));
 
       // Pending next Generator update
-      importMap = new ImportMap(generator.importMap.mapUrl, generator.importMap.toJSON());
+      importMap = new ImportMap({
+        mapUrl: generator.importMap.mapUrl,
+        map: generator.importMap.toJSON()
+      });
 
       if (externals) {
         externalsMap = new Map();
