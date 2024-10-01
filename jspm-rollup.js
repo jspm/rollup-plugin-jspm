@@ -381,6 +381,7 @@ export default ({ baseUrl, defaultProvider = 'nodemodules', env = ['browser', 'd
             }
             if (depId === 'buffer' || depId === 'module' || depId === 'process')
               return true;
+            if (depId.endsWith('/')) depId = depId.slice(0, -1);
             const resolved = importMap.resolve(depId, id);
             if (!resolved)
               throw new Error('Could not resolve ' + depId + ' in ' + id);
